@@ -5,6 +5,7 @@ import {
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
+import PriceBoard from '../components/PriceBoard';
 
 const { Title, Text } = Typography;
 
@@ -59,7 +60,7 @@ export default function Dashboard() {
         {/* User Info */}
         <Row gutter={[16, 16]}>
           <Col xs={24} lg={12}>
-            <Card title="User Information" bordered={false}>
+            <Card title="User Information" variant="borderless">
               <Space direction="vertical" size="middle" style={{ width: '100%' }}>
                 <div>
                   <Text type="secondary">Email:</Text>
@@ -86,7 +87,7 @@ export default function Dashboard() {
           </Col>
 
           <Col xs={24} lg={12}>
-            <Card title="Account Balance" bordered={false}>
+            <Card title="Account Balance" variant="borderless">
               <Statistic
                 title="Virtual Balance (USDT)"
                 value={user.balanceUsdt}
@@ -119,6 +120,11 @@ export default function Dashboard() {
           </Text>
         </Card>
 
+        {/* Real-time Market Data */}
+        <Card title="Real-time Market Data" style={{ marginTop: 24 }}>
+          <PriceBoard />
+        </Card>
+
         {/* Feature Roadmap */}
         <Card title="Feature Roadmap" style={{ marginTop: 24 }}>
           <Space direction="vertical" size="small">
@@ -127,7 +133,7 @@ export default function Dashboard() {
               <Text>User registration and login system</Text>
             </div>
             <div>
-              <Tag color="processing">In Development</Tag>
+              <Tag color="success">✓ Completed</Tag>
               <Text>Real-time market data dashboard</Text>
             </div>
             <div>

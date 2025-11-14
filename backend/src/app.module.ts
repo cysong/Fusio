@@ -1,22 +1,26 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { RedisModule } from '@nestjs-modules/ioredis';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './modules/auth/auth.module';
+import { MarketModule } from './modules/market/market.module';
 import { getDatabaseConfig } from './config/database.config';
 
 @Module({
   imports: [
-    // 配置模块
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: ['.env', '.env.development', '.env.production'],
     }),
-    // 数据库模块
     TypeOrmModule.forRoot(getDatabaseConfig()),
-    // 业务模块
+    RedisModule.forRoot({
+      type: 'single',
+      url: `redis://${process.env.REDIS_HOST || 'data'}:${process.env.REDIS_PORT || 16379}`,
+    }),
     AuthModule,
+    MarketModule,
   ],
   controllers: [AppController],
   providers: [AppService],
