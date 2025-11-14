@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { BaseExchangeAdapter } from '../adapters/base-exchange.adapter';
 import { BinanceAdapter } from '../adapters/binance.adapter';
 import { BybitAdapter } from '../adapters/bybit.adapter';
+import { OkxAdapter } from '../adapters/okx.adapter';
 import { TickerData } from '../interfaces/ticker.interface';
 import { ExchangeConfig } from '../interfaces/exchange-config.interface';
 
@@ -28,6 +29,8 @@ export class ExchangeAdapterFactory {
         return new BinanceAdapter(config, onTickerUpdate, onError);
       case 'bybit':
         return new BybitAdapter(config, onTickerUpdate, onError);
+      case 'okx':
+        return new OkxAdapter(config, onTickerUpdate, onError);
       default:
         throw new Error(`Unsupported exchange: ${config.id}`);
     }

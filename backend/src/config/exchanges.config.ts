@@ -34,6 +34,20 @@ export const EXCHANGES_CONFIG: ExchangesConfiguration = {
         requestsPerSecond: 10,
       },
     },
+    okx: {
+      id: 'okx',
+      name: 'OKX',
+      enabled: true,
+      wsEndpoint: 'wss://ws.okx.com:8443/ws/v5/public',
+      restEndpoint: 'https://www.okx.com/api/v5',
+      reconnect: {
+        maxAttempts: 5,
+        delayMs: 5000,
+      },
+      rateLimit: {
+        requestsPerSecond: 10,
+      },
+    },
   },
   tradingPairs: {
     'BTC/USDT': {
@@ -48,6 +62,10 @@ export const EXCHANGES_CONFIG: ExchangesConfiguration = {
           enabled: true,
           nativeSymbol: 'BTCUSDT',
         },
+        okx: {
+          enabled: true,
+          nativeSymbol: 'BTC-USDT',
+        },
       },
     },
     'ETH/USDT': {
@@ -61,6 +79,10 @@ export const EXCHANGES_CONFIG: ExchangesConfiguration = {
         bybit: {
           enabled: true,
           nativeSymbol: 'ETHUSDT',
+        },
+        okx: {
+          enabled: true,
+          nativeSymbol: 'ETH-USDT',
         },
       },
     },
