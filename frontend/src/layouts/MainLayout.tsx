@@ -74,93 +74,76 @@ export default function MainLayout() {
         width={240}
         theme="dark"
         style={{
+          overflow: 'auto',
           height: '100vh',
           position: 'fixed',
           left: 0,
           top: 0,
           bottom: 0,
-          display: 'flex',
-          flexDirection: 'column',
         }}
       >
-        {/* Scrollable content area */}
+        {/* Logo */}
         <div
           style={{
-            flex: 1,
-            overflow: 'auto',
+            height: 64,
             display: 'flex',
-            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderBottom: '1px solid rgba(255,255,255,0.1)',
+            cursor: 'pointer',
           }}
+          onClick={() => navigate('/app/market/overview')}
         >
-          {/* Logo */}
-          <div
-            style={{
-              height: 64,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              borderBottom: '1px solid rgba(255,255,255,0.1)',
-              cursor: 'pointer',
-            }}
-            onClick={() => navigate('/app/market/overview')}
-          >
-            <Title level={3} style={{ color: '#fff', margin: 0 }}>
-              FUSIO
-            </Title>
-          </div>
-
-          {/* User Info Card */}
-          <Card
-            size="small"
-            style={{
-              margin: 16,
-              background: 'rgba(255,255,255,0.1)',
-              border: 'none',
-              cursor: 'pointer',
-            }}
-            onClick={() => navigate('/app/settings/profile')}
-            hoverable
-          >
-            <Space direction="vertical" size={4} style={{ width: '100%' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <UserOutlined style={{ color: '#fff', fontSize: 16 }} />
-                <Text strong style={{ color: '#fff', fontSize: 14 }}>
-                  {user.nickname}
-                </Text>
-              </div>
-              <Text style={{ color: 'rgba(255,255,255,0.65)', fontSize: 12 }}>
-                {user.email}
-              </Text>
-              <Statistic
-                value={user.balanceUsdt}
-                precision={2}
-                valueStyle={{ color: '#52c41a', fontSize: 16 }}
-                prefix={<DollarOutlined />}
-                suffix="USDT"
-              />
-            </Space>
-          </Card>
-
-          {/* Menu */}
-          <Menu
-            theme="dark"
-            mode="inline"
-            selectedKeys={[location.pathname]}
-            defaultOpenKeys={['market', 'trading', 'portfolio', 'settings']}
-            items={menuItems}
-            onClick={({ key }) => navigate(key)}
-            style={{ borderRight: 0, flex: 1 }}
-          />
+          <Title level={3} style={{ color: '#fff', margin: 0 }}>
+            FUSIO
+          </Title>
         </div>
 
-        {/* Fixed Logout Button at bottom */}
-        <div
+        {/* User Info Card */}
+        <Card
+          size="small"
           style={{
-            padding: 16,
-            borderTop: '1px solid rgba(255,255,255,0.1)',
-            background: '#001529',
+            margin: 16,
+            background: 'rgba(255,255,255,0.1)',
+            border: 'none',
+            cursor: 'pointer',
           }}
+          onClick={() => navigate('/app/settings/profile')}
+          hoverable
         >
+          <Space direction="vertical" size={4} style={{ width: '100%' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <UserOutlined style={{ color: '#fff', fontSize: 16 }} />
+              <Text strong style={{ color: '#fff', fontSize: 14 }}>
+                {user.nickname}
+              </Text>
+            </div>
+            <Text style={{ color: 'rgba(255,255,255,0.65)', fontSize: 12 }}>
+              {user.email}
+            </Text>
+            <Statistic
+              value={user.balanceUsdt}
+              precision={2}
+              valueStyle={{ color: '#52c41a', fontSize: 16 }}
+              prefix={<DollarOutlined />}
+              suffix="USDT"
+            />
+          </Space>
+        </Card>
+
+        {/* Menu */}
+        <Menu
+          theme="dark"
+          mode="inline"
+          selectedKeys={[location.pathname]}
+          defaultOpenKeys={['market', 'trading', 'portfolio', 'settings']}
+          items={menuItems}
+          onClick={({ key }) => navigate(key)}
+          style={{ borderRight: 0 }}
+        />
+
+        {/* Logout Button */}
+        <div style={{ position: 'absolute', bottom: 16, left: 16, right: 16 }}>
           <Button
             icon={<LogoutOutlined />}
             onClick={handleLogout}
