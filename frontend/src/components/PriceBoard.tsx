@@ -28,9 +28,11 @@ export default function PriceBoard() {
     };
 
     const handleTicker = (data: TickerData) => {
+      // Use exchange:symbol as key to support multiple exchanges
+      const key = `${data.exchange}:${data.symbol}`;
       setTickers((prev) => ({
         ...prev,
-        [data.symbol]: data,
+        [key]: data,
       }));
     };
 
@@ -79,7 +81,7 @@ export default function PriceBoard() {
       <Row gutter={[16, 16]}>
         {Object.keys(tickers).length > 0 ? (
           Object.values(tickers).map((ticker) => (
-            <Col key={ticker.symbol} xs={24} sm={12} lg={8}>
+            <Col key={`${ticker.exchange}:${ticker.symbol}`} xs={24} sm={12} lg={8}>
               <PriceCard ticker={ticker} />
             </Col>
           ))

@@ -1,82 +1,205 @@
-import {
-  Injectable,
-  Logger,
-  OnModuleInit,
-  OnModuleDestroy,
-} from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { InjectRedis } from '@nestjs-modules/ioredis';
 import Redis from 'ioredis';
-import { BinanceAdapter } from './adapters/binance.adapter';
 import { MarketGateway } from './market.gateway';
 import { TickerData } from './interfaces/ticker.interface';
+import { BaseExchangeAdapter } from './adapters/base-exchange.adapter';
+import { ExchangeAdapterFactory } from './factories/exchange-adapter.factory';
+import {
+  EXCHANGES_CONFIG,
+  getEnabledExchanges,
+  getEnabledTradingPairs,
+} from '../../config/exchanges.config';
 
+/**
+ * Market Service
+ * Manages multi-exchange WebSocket connections and market data aggregation
+ */
 @Injectable()
 export class MarketService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(MarketService.name);
-  private adapters: Map<string, BinanceAdapter> = new Map();
+
+  // Store all adapter instances: Map<'exchange:symbol', adapter>
+  private adapters: Map<string, BaseExchangeAdapter> = new Map();
 
   constructor(
     @InjectRedis() private readonly redis: Redis,
     private readonly marketGateway: MarketGateway,
-  ) {}
+    private readonly adapterFactory: ExchangeAdapterFactory,
+  ) { }
 
-  onModuleInit() {
-    this.logger.log('Initializing Market Service');
-    this.startBinanceStreams();
+  async onModuleInit() {
+    this.logger.log('Initializing market data streams...');
+    await this.startAllStreams();
   }
 
-  onModuleDestroy() {
-    this.logger.log('Stopping Market Service');
-    this.adapters.forEach((adapter) => adapter.disconnect());
+  async onModuleDestroy() {
+    this.logger.log('Shutting down market data streams...');
+    this.stopAllStreams();
+  }
+
+  /**
+   * Start all enabled exchange and trading pair streams
+   */
+  private async startAllStreams(): Promise<void> {
+    const enabledExchanges = getEnabledExchanges();
+    const enabledPairs = getEnabledTradingPairs();
+
+    this.logger.log(
+      `Starting streams for ${enabledExchanges.length} exchanges, ${enabledPairs.length} pairs`,
+    );
+
+    for (const exchange of enabledExchanges) {
+      for (const pair of enabledPairs) {
+        // Check if this pair is enabled for this exchange
+        const exchangePairConfig = pair.exchanges[exchange.id];
+        if (!exchangePairConfig || !exchangePairConfig.enabled) {
+          continue;
+        }
+
+        const nativeSymbol = exchangePairConfig.nativeSymbol;
+        const standardSymbol = pair.symbol;
+
+        this.startStream(exchange.id, nativeSymbol, standardSymbol);
+      }
+    }
+  }
+
+  /**
+   * Start a single data stream
+   */
+  private startStream(
+    exchangeId: string,
+    nativeSymbol: string,
+    standardSymbol: string,
+  ): void {
+    const key = `${exchangeId}:${standardSymbol}`;
+
+    if (this.adapters.has(key)) {
+      this.logger.warn(`Stream already exists for ${key}`);
+      return;
+    }
+
+    const exchangeConfig = EXCHANGES_CONFIG.exchanges[exchangeId];
+    if (!exchangeConfig) {
+      this.logger.error(`Exchange config not found for ${exchangeId}`);
+      return;
+    }
+
+    try {
+      const adapter = this.adapterFactory.createAdapter(
+        exchangeConfig,
+        (data: TickerData) => this.handleTickerUpdate(data),
+        (error: Error) => this.handleAdapterError(exchangeId, standardSymbol, error),
+      );
+
+      adapter.connect(nativeSymbol, standardSymbol);
+      this.adapters.set(key, adapter);
+
+      this.logger.log(`Started stream: ${key} (${nativeSymbol})`);
+    } catch (error) {
+      this.logger.error(`Failed to start stream ${key}: ${error.message}`);
+    }
+  }
+
+  /**
+   * Stop all data streams
+   */
+  private stopAllStreams(): void {
+    for (const [key, adapter] of this.adapters.entries()) {
+      try {
+        adapter.disconnect();
+        this.logger.log(`Stopped stream: ${key}`);
+      } catch (error) {
+        this.logger.error(`Error stopping stream ${key}: ${error.message}`);
+      }
+    }
     this.adapters.clear();
   }
 
-  private startBinanceStreams(): void {
-    const symbols = ['BTCUSDT', 'ETHUSDT'];
-
-    symbols.forEach((symbol) => {
-      const adapter = new BinanceAdapter(
-        (data) => this.handleTickerData(data),
-        (error) => this.handleError(error),
-      );
-
-      adapter.connect(symbol);
-      this.adapters.set(symbol, adapter);
-    });
-  }
-
-  private async handleTickerData(data: TickerData): Promise<void> {
+  /**
+   * Handle ticker data update
+   */
+  private async handleTickerUpdate(data: TickerData): Promise<void> {
     try {
-      const key = `market:ticker:${data.exchange}:${data.symbol}`;
-      await this.redis.setex(key, 10, JSON.stringify(data));
+      // Redis cache key: ticker:exchange:symbol
+      const cacheKey = `ticker:${data.exchange}:${data.symbol}`;
+      await this.redis.setex(cacheKey, 10, JSON.stringify(data));
 
+      // Broadcast to WebSocket clients
       this.marketGateway.broadcastTicker(data);
 
       if (Math.random() < 0.01) {
         this.logger.debug(
-          `Ticker: ${data.symbol} ${data.price} (${data.priceChangePercent}%)`,
+          `${data.exchange} ${data.symbol}: $${data.price.toFixed(2)} (${data.priceChangePercent.toFixed(2)}%)`,
         );
       }
     } catch (error) {
-      this.logger.error('Failed to handle ticker data', error);
+      this.logger.error(`Failed to handle ticker update: ${error.message}`);
     }
   }
 
-  private handleError(error: Error): void {
-    this.logger.error('Market data error', error);
+  /**
+   * Handle adapter error
+   */
+  private handleAdapterError(exchange: string, symbol: string, error: Error): void {
+    this.logger.error(`Adapter error [${exchange}:${symbol}]: ${error.message}`);
   }
 
-  async getLatestPrice(
-    exchange: string,
-    symbol: string,
-  ): Promise<TickerData | null> {
-    const key = `market:ticker:${exchange}:${symbol}`;
-    const cached = await this.redis.get(key);
+  /**
+   * Get latest ticker data
+   */
+  async getLatestTicker(exchange: string, symbol: string): Promise<TickerData | null> {
+    try {
+      const cacheKey = `ticker:${exchange}:${symbol}`;
+      const cached = await this.redis.get(cacheKey);
 
-    if (!cached) {
+      if (!cached) {
+        return null;
+      }
+
+      return JSON.parse(cached);
+    } catch (error) {
+      this.logger.error(`Failed to get ticker from cache: ${error.message}`);
       return null;
     }
+  }
 
-    return JSON.parse(cached);
+  /**
+   * Get all exchange tickers for a specific trading pair
+   */
+  async getAllExchangeTickers(symbol: string): Promise<TickerData[]> {
+    const enabledExchanges = getEnabledExchanges();
+    const results: TickerData[] = [];
+
+    for (const exchange of enabledExchanges) {
+      const ticker = await this.getLatestTicker(exchange.id, symbol);
+      if (ticker) {
+        results.push(ticker);
+      }
+    }
+
+    return results;
+  }
+
+  /**
+   * Get connection status
+   */
+  getConnectionStatus(): Record<string, boolean> {
+    const status: Record<string, boolean> = {};
+
+    for (const [key, adapter] of this.adapters.entries()) {
+      status[key] = adapter.getConnectionStatus();
+    }
+
+    return status;
+  }
+
+  /**
+   * Legacy method for backward compatibility
+   * @deprecated Use getLatestTicker instead
+   */
+  async getLatestPrice(exchange: string, symbol: string): Promise<TickerData | null> {
+    return this.getLatestTicker(exchange, symbol);
   }
 }

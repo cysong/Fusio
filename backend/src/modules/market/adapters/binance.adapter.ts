@@ -1,87 +1,81 @@
 import WebSocket from 'ws';
-import { Logger } from '@nestjs/common';
+import { BaseExchangeAdapter } from './base-exchange.adapter';
 import { TickerData } from '../interfaces/ticker.interface';
 
-export class BinanceAdapter {
-  private readonly logger = new Logger(BinanceAdapter.name);
-  private ws: WebSocket | null = null;
-  private reconnectAttempts = 0;
-  private readonly MAX_RECONNECT_ATTEMPTS = 5;
-  private readonly RECONNECT_DELAY = 3000;
+/**
+ * Binance WebSocket adapter
+ * Implements Binance-specific WebSocket connection and data normalization
+ */
+export class BinanceAdapter extends BaseExchangeAdapter {
+  async connect(nativeSymbol: string, standardSymbol: string): Promise<void> {
+    const wsUrl = this.getWebSocketUrl(nativeSymbol);
+    this.logger.log(`Connecting to ${wsUrl}`);
 
-  private readonly WS_URL = 'wss://stream.binance.com:9443/ws';
-
-  constructor(
-    private readonly onDataCallback: (data: TickerData) => void,
-    private readonly onErrorCallback?: (error: Error) => void,
-  ) {}
-
-  connect(symbol: string): void {
-    const stream = `${symbol.toLowerCase()}@ticker`;
-    const url = `${this.WS_URL}/${stream}`;
-
-    this.logger.log(`Connecting to Binance WebSocket: ${url}`);
-
-    this.ws = new WebSocket(url);
+    this.ws = new WebSocket(wsUrl);
 
     this.ws.on('open', () => {
-      this.logger.log('Binance WebSocket connected');
-      this.reconnectAttempts = 0;
+      this.isConnected = true;
+      this.resetReconnectAttempts();
+      this.clearReconnectTimer();
+      this.logger.log(`Connected to ${standardSymbol}`);
     });
 
     this.ws.on('message', (data: WebSocket.Data) => {
       try {
         const raw = JSON.parse(data.toString());
-        const normalized = this.normalizeTickerData(raw);
-        this.onDataCallback(normalized);
+        const normalized = this.normalizeTickerData(raw, standardSymbol);
+        this.onTickerUpdate(normalized);
       } catch (error) {
-        this.logger.error('Failed to parse message', error);
+        this.logger.error(`Failed to parse message: ${error.message}`);
+        if (this.onError) {
+          this.onError(error);
+        }
       }
     });
 
-    this.ws.on('error', (error) => {
-      this.logger.error('WebSocket error', error);
-      this.onErrorCallback?.(error);
+    this.ws.on('error', (error: Error) => {
+      this.logger.error(`WebSocket error for ${standardSymbol}: ${error.message}`);
+      if (this.onError) {
+        this.onError(error);
+      }
     });
 
     this.ws.on('close', () => {
-      this.logger.warn('WebSocket closed');
-      this.scheduleReconnect(symbol);
+      this.isConnected = false;
+      this.logger.warn(`WebSocket closed for ${standardSymbol}`);
+      this.scheduleReconnect(nativeSymbol, standardSymbol);
     });
   }
 
-  private normalizeTickerData(raw: any): TickerData {
+  disconnect(): void {
+    this.clearReconnectTimer();
+    if (this.ws) {
+      this.isConnected = false;
+      this.ws.close();
+      this.ws = null;
+      this.logger.log('Disconnected');
+    }
+  }
+
+  protected getWebSocketUrl(nativeSymbol: string): string {
+    return `${this.config.wsEndpoint}/${nativeSymbol}@ticker`;
+  }
+
+  protected normalizeTickerData(raw: any, standardSymbol: string): TickerData {
     return {
-      exchange: 'binance',
-      symbol: raw.s,
+      exchange: this.config.id,
+      symbol: standardSymbol,
       price: parseFloat(raw.c),
       priceChange: parseFloat(raw.p),
       priceChangePercent: parseFloat(raw.P),
       volume: parseFloat(raw.v),
-      timestamp: raw.E,
+      high24h: parseFloat(raw.h),
+      low24h: parseFloat(raw.l),
+      timestamp: Date.now(),
+      source: {
+        nativeSymbol: raw.s,
+        exchangeTimestamp: raw.E,
+      },
     };
-  }
-
-  private scheduleReconnect(symbol: string): void {
-    if (this.reconnectAttempts >= this.MAX_RECONNECT_ATTEMPTS) {
-      this.logger.error('Max reconnect attempts reached');
-      return;
-    }
-
-    this.reconnectAttempts++;
-    this.logger.log(
-      `Reconnecting in ${this.RECONNECT_DELAY}ms (attempt ${this.reconnectAttempts})`,
-    );
-
-    setTimeout(() => {
-      this.connect(symbol);
-    }, this.RECONNECT_DELAY);
-  }
-
-  disconnect(): void {
-    if (this.ws) {
-      this.ws.close();
-      this.ws = null;
-    }
   }
 }
