@@ -12,12 +12,12 @@ import { getDatabaseConfig } from './config/database.config';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: ['.env', '.env.development', '.env.production'],
+      envFilePath: [`.env.${process.env.NODE_ENV || 'development'}`, '.env'],
     }),
     TypeOrmModule.forRoot(getDatabaseConfig()),
     RedisModule.forRoot({
       type: 'single',
-      url: `redis://${process.env.REDIS_HOST || 'data'}:${process.env.REDIS_PORT || 16379}`,
+      url: `redis://${process.env.REDIS_HOST || 'localhost'}:${process.env.REDIS_PORT || 6379}`,
     }),
     AuthModule,
     MarketModule,
@@ -25,4 +25,4 @@ import { getDatabaseConfig } from './config/database.config';
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule { }
