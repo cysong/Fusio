@@ -2,10 +2,6 @@ import { Card, Statistic, Tag, Typography } from 'antd';
 import { ArrowUpOutlined, ArrowDownOutlined } from '@ant-design/icons';
 import type { TickerData } from '@/types/market';
 import { useState, useEffect } from 'react';
-import dayjs from 'dayjs';
-import relativeTime from 'dayjs/plugin/relativeTime';
-
-dayjs.extend(relativeTime);
 
 const { Text } = Typography;
 
@@ -36,6 +32,19 @@ export default function PriceCard({ ticker }: PriceCardProps) {
     return 'purple';
   };
 
+  // Extract base currency from symbol (e.g., "BTC/USDT" -> "BTC")
+  const getBaseCurrency = (symbol: string): string => {
+    return symbol.split('/')[0];
+  };
+
+  // Format number with thousand separators
+  const formatNumber = (num: number): string => {
+    return num.toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  };
+
   return (
     <Card
       style={{
@@ -44,8 +53,7 @@ export default function PriceCard({ ticker }: PriceCardProps) {
       }}
     >
       <div style={{ marginBottom: 16 }}>
-        <Tag color={getSymbolColor(ticker.symbol)}>{ticker.symbol.replace('USDT', '/USDT')}</Tag>
-        <Tag color="default">{ticker.exchange.toUpperCase()}</Tag>
+        <Tag color={getSymbolColor(ticker.symbol)}>{ticker.symbol}</Tag>
       </div>
 
       <Statistic
@@ -73,14 +81,10 @@ export default function PriceCard({ ticker }: PriceCardProps) {
           <Text type="secondary" style={{ fontSize: 12 }}>
             24h Volume
           </Text>
-          <div style={{ fontSize: 14 }}>{ticker.volume.toFixed(2)} BTC</div>
+          <div style={{ fontSize: 14 }}>
+            {formatNumber(ticker.volume)} {getBaseCurrency(ticker.symbol)}
+          </div>
         </div>
-      </div>
-
-      <div style={{ marginTop: 12 }}>
-        <Text type="secondary" style={{ fontSize: 12 }}>
-          Updated: {dayjs(ticker.timestamp).fromNow()}
-        </Text>
       </div>
     </Card>
   );
