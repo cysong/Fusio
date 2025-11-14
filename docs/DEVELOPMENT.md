@@ -15,13 +15,17 @@
 - 安全: bcrypt, CORS, 全局异常过滤器
 - 缓存: Redis 7 (ioredis)
 - 实时通信: Socket.io (WebSocket Gateway)
-- 交易所集成: Binance WebSocket (ws 库)
-- 市场数据: 实时价格流、数据标准化、广播机制
+- 交易所集成: **多交易所适配器架构** ✅
+  - **Binance WebSocket** (ws 库) ✅
+  - **Bybit V5 WebSocket** ✅
+  - **OKX V5 WebSocket** ✅
+- 市场数据: 实时价格流、数据标准化、统一接口、广播机制
+- 架构模式: 适配器模式 + 工厂模式 + 配置驱动
 
 **后续规划**:
 - PostgreSQL 16 (订单、用户数据)
 - Bull Queue + Redis (异步订单处理)
-- Bybit、OKX WebSocket 适配器
+- 更多交易所适配器 (Kraken, Coinbase)
 - Prometheus + Winston (监控和日志)
 
 ### 前端
@@ -56,16 +60,26 @@ fusio/
 │   ├── data/                  # SQLite 数据库文件
 │   ├── src/
 │   │   ├── common/            # 全局过滤器、拦截器
-│   │   ├── config/            # 数据库、Redis 配置
+│   │   ├── config/
+│   │   │   ├── database.config.ts     # 数据库配置
+│   │   │   └── exchanges.config.ts    # 交易所配置 ✅ NEW
 │   │   └── modules/
 │   │       ├── auth/          # 认证模块 (JWT)
 │   │       ├── user/          # 用户实体
-│   │       └── market/        # 市场数据模块
-│   │           ├── interfaces/     # 数据接口定义
-│   │           ├── adapters/       # Binance WebSocket 适配器
-│   │           ├── market.service.ts    # 核心业务逻辑
+│   │       └── market/        # 市场数据模块 ⬅️ 重构
+│   │           ├── interfaces/
+│   │           │   ├── ticker.interface.ts       # Ticker 数据接口
+│   │           │   └── exchange-config.interface.ts  # 配置接口 ✅ NEW
+│   │           ├── adapters/  # 交易所适配器层
+│   │           │   ├── base-exchange.adapter.ts  # 抽象基类 ✅ NEW
+│   │           │   ├── binance.adapter.ts        # Binance 实现 ♻️ 重构
+│   │           │   ├── bybit.adapter.ts          # Bybit 实现 ✅ NEW
+│   │           │   └── okx.adapter.ts            # OKX 实现 ✅ NEW
+│   │           ├── factories/
+│   │           │   └── exchange-adapter.factory.ts  # 适配器工厂 ✅ NEW
+│   │           ├── market.service.ts    # 核心业务逻辑 ♻️ 重构
 │   │           ├── market.gateway.ts    # Socket.io Gateway
-│   │           ├── market.controller.ts # REST API
+│   │           ├── market.controller.ts # REST API ♻️ 增强
 │   │           └── market.module.ts     # 模块定义
 │   └── .env.development       # 开发环境变量
 │
@@ -162,8 +176,17 @@ GET    /api/auth/profile     获取当前用户信息 (需认证)
 ### 市场数据接口
 
 ```
-GET    /api/market/ticker/:exchange/:symbol    获取最新价格 (调试用)
-       示例: GET /api/market/ticker/binance/BTCUSDT
+GET    /api/market/ticker/:exchange/:base/:quote    获取特定交易所价格
+       示例: GET /api/market/ticker/binance/BTC/USDT
+       示例: GET /api/market/ticker/bybit/ETH/USDT
+       示例: GET /api/market/ticker/okx/BTC/USDT
+
+GET    /api/market/ticker/:base/:quote/all         获取所有交易所价格（聚合）
+       示例: GET /api/market/ticker/BTC/USDT/all
+       返回: [binanceData, bybitData, okxData]
+
+GET    /api/market/status                          获取所有连接状态
+       返回: { "binance:BTC/USDT": true, "bybit:BTC/USDT": true, ... }
 ```
 
 ### WebSocket 接口
@@ -234,19 +257,29 @@ pnpm install pg
 
 ## 核心系统模块
 
-规划中的系统模块：
+### ✅ 已实现模块
 
-**Market Data Service**
-从交易所 WebSocket 聚合实时价格，数据标准化，广播给客户端，Redis 缓存。
+**Market Data Service** (V0.2 完成)
+- 从多个交易所 WebSocket 聚合实时价格
+- 统一 TickerData 接口进行数据标准化
+- Socket.io 广播给所有连接客户端
+- Redis 缓存最新价格（10 秒过期）
+- 支持 3 个交易所：Binance, Bybit, OKX
+
+**Exchange Adapter Layer** (V0.3 完成)
+- 使用适配器模式 + 工厂模式
+- BaseExchangeAdapter 抽象基类
+- 配置驱动：exchanges.config.ts
+- 统一生命周期管理（connect, disconnect, reconnect）
+- 自动重连机制（最多 5 次尝试）
+
+### 📋 规划中模块
 
 **Trading Service**
 智能订单路由 (SOR)，Bull Queue 异步执行，订单状态管理。
 
 **Risk Control Service**
 余额检查，每日订单限额，极端价格波动熔断机制。
-
-**Exchange Adapter Layer**
-使用适配器模式的抽象基类进行交易所集成。
 
 **Monitoring Service**
 Prometheus 指标收集 (API 延迟、WebSocket 连接、订单成功率)。
@@ -462,7 +495,108 @@ disconnect() {
 }
 ```
 
-详见项目根目录下的 `SOCKET-WARNING-FIX-V2.md` 获取完整修复过程。
+## 多交易所架构设计 (V0.3)
+
+### 架构图
+
+```
+配置层 (exchanges.config.ts)
+    ↓
+MarketService (启动所有数据流)
+    ↓
+ExchangeAdapterFactory (创建适配器)
+    ↓
+BaseExchangeAdapter (抽象基类)
+    ├─ BinanceAdapter
+    ├─ BybitAdapter
+    └─ OkxAdapter
+    ↓
+统一 TickerData 接口
+    ↓
+Redis 缓存 + Socket.io 广播
+```
+
+### 关键设计决策
+
+**1. 适配器模式**
+每个交易所继承 BaseExchangeAdapter，实现统一接口：
+- `connect(nativeSymbol, standardSymbol)`
+- `disconnect()`
+- `normalizeTickerData(raw, standardSymbol)`
+
+**2. 工厂模式**
+ExchangeAdapterFactory 根据 exchangeId 动态创建适配器实例。
+
+**3. 配置驱动**
+所有交易所和交易对配置在 exchanges.config.ts：
+- WebSocket 端点
+- 重连策略
+- 原生符号映射（btcusdt vs BTCUSDT vs BTC-USDT）
+
+**4. 统一数据格式**
+所有交易所数据规范化为 TickerData：
+```typescript
+{
+  exchange: 'binance',
+  symbol: 'BTC/USDT',
+  price: 96958.80,
+  priceChangePercent: 5.91,
+  volume: 18062.20,
+  high24h: 97500.00,
+  low24h: 95000.00,
+  timestamp: 1234567890,
+  source: {
+    nativeSymbol: 'btcusdt',
+    exchangeTimestamp: 1234567890123
+  }
+}
+```
+
+### 扩展新交易所
+
+只需 3 步（无需修改核心代码）：
+
+1. 在 `exchanges.config.ts` 添加配置
+2. 创建 `NewExchangeAdapter extends BaseExchangeAdapter`
+3. 在 `ExchangeAdapterFactory` 添加 case
+
+**示例：添加 Kraken**
+```typescript
+// 1. exchanges.config.ts
+kraken: {
+  id: 'kraken',
+  name: 'Kraken',
+  enabled: true,
+  wsEndpoint: 'wss://ws.kraken.com',
+  ...
+}
+
+// 2. kraken.adapter.ts
+export class KrakenAdapter extends BaseExchangeAdapter {
+  async connect(...) { ... }
+  normalizeTickerData(...) { ... }
+}
+
+// 3. exchange-adapter.factory.ts
+case 'kraken':
+  return new KrakenAdapter(config, onTickerUpdate, onError);
+```
+
+### 特殊处理
+
+**Bybit 心跳**
+- 发送 JSON: `{"op":"ping"}`
+- 响应 JSON: `{"op":"pong"}`
+- 间隔: 20 秒
+
+**OKX 心跳**
+- 发送字符串: `"ping"`
+- 响应字符串: `"pong"` (非 JSON，需特殊处理)
+- 间隔: 15 秒
+
+**Binance 心跳**
+- 无需客户端心跳
+- 服务器自动 ping
 
 ## 开发日志
 
@@ -473,3 +607,12 @@ disconnect() {
   - Redis 缓存集成
   - 多币种支持（BTC/USDT, ETH/USDT）
   - WebSocket 警告深度修复（事件监听器管理优化）
+- **2025-01-14**: V0.3 完成 - 多交易所聚合 ✅
+  - 建立可扩展的多交易所架构
+  - 适配器模式 + 工厂模式 + 配置驱动
+  - 集成 Bybit V5 WebSocket API
+  - 集成 OKX V5 WebSocket API
+  - 统一数据格式（TickerData 接口增强）
+  - 修复 OKX pong 响应处理（字符串 vs JSON）
+  - 修复前端 ticker 覆盖问题（使用 exchange:symbol 组合 key）
+  - 新增 API 端点：聚合查询、连接状态
