@@ -13,27 +13,40 @@ export default function PriceBoard() {
   useEffect(() => {
     const socket = socketClient.connect();
 
-    socket.on('connect', () => {
+    // Define event handlers
+    const handleConnect = () => {
       setIsConnected(true);
       setError(null);
-    });
+    };
 
-    socket.on('disconnect', () => {
+    const handleDisconnect = () => {
       setIsConnected(false);
-    });
+    };
 
-    socket.on('connect_error', (err: Error) => {
+    const handleConnectError = (err: Error) => {
       setError('Connection failed: ' + err.message);
-    });
+    };
 
-    socket.on('ticker', (data: TickerData) => {
+    const handleTicker = (data: TickerData) => {
       setTickers((prev) => ({
         ...prev,
         [data.symbol]: data,
       }));
-    });
+    };
+
+    // Register event listeners
+    socket.on('connect', handleConnect);
+    socket.on('disconnect', handleDisconnect);
+    socket.on('connect_error', handleConnectError);
+    socket.on('ticker', handleTicker);
 
     return () => {
+      // Remove event listeners before disconnect
+      socket.off('connect', handleConnect);
+      socket.off('disconnect', handleDisconnect);
+      socket.off('connect_error', handleConnectError);
+      socket.off('ticker', handleTicker);
+
       socketClient.disconnect();
     };
   }, []);
