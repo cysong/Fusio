@@ -37,10 +37,10 @@ apiClient.interceptors.response.use(
     return response.data;
   },
   (error) => {
-    // 401 错误自动登出
-    if (error.response?.status === 401) {
+    // 401 错误自动登出（但不在登录/注册时触发）
+    if (error.response?.status === 401 && !error.config?.url?.includes('/auth/')) {
       localStorage.removeItem('auth-storage');
-      window.location.href = '/login';
+      window.location.href = '/';
     }
 
     // 提取错误消息
