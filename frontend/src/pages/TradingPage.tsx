@@ -3,7 +3,10 @@ import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import TradingLayout from '@/components/TradingLayout';
 import TradingHeader from '@/components/TradingHeader';
 import OrderBook from '@/components/OrderBook';
+import KlineChart from '@/components/KlineChart';
 import { useOrderBook } from '@/hooks/useOrderBook';
+import { useKlineUpdates } from '@/hooks/useKlineUpdates';
+import { useTradingStore } from '@/stores/tradingStore';
 
 export default function TradingPage() {
   const { symbol } = useParams<{ symbol?: string }>();
@@ -18,12 +21,16 @@ export default function TradingPage() {
   const [currentSymbol, setCurrentSymbol] = useState(initialSymbol);
   const [currentExchange, setCurrentExchange] = useState(initialExchange);
 
-  // Subscribe to OrderBook WebSocket updates
+  // Subscribe to WebSocket updates
   useOrderBook();
+  useKlineUpdates();
 
+  // Update global trading store when symbol/exchange changes
   useEffect(() => {
+    useTradingStore.getState().setSelectedSymbol(currentSymbol);
+    useTradingStore.getState().setSelectedExchange(currentExchange);
     console.log('Trading Page:', { symbol: currentSymbol, exchange: currentExchange });
-  }, [currentSymbol, currentExchange]);
+  }, [currentSymbol, currentExchange]); // Only depend on the actual values, not store functions
 
   // Handle symbol change - update URL
   const handleSymbolChange = (newSymbol: string) => {
@@ -52,12 +59,7 @@ export default function TradingPage() {
       orderBook={
         <OrderBook symbol={currentSymbol} exchange={currentExchange} />
       }
-      chart={
-        <div style={{ padding: 16 }}>
-          <h3>K-Line Chart</h3>
-          <p style={{ color: '#888' }}>Coming in Stage 4</p>
-        </div>
-      }
+      chart={<KlineChart />}
       tradingForm={
         <div style={{ padding: 16 }}>
           <h3>Trading Form</h3>

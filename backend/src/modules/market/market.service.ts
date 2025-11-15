@@ -1,9 +1,10 @@
-import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, OnModuleDestroy, NotFoundException } from '@nestjs/common';
 import { InjectRedis } from '@nestjs-modules/ioredis';
 import Redis from 'ioredis';
 import { MarketGateway } from './market.gateway';
 import { TickerData } from './interfaces/ticker.interface';
 import { OrderBookData } from './interfaces/orderbook.interface';
+import { KlineData } from './interfaces/kline.interface';
 import { BaseExchangeAdapter } from './adapters/base-exchange.adapter';
 import { ExchangeAdapterFactory } from './factories/exchange-adapter.factory';
 import {
@@ -92,6 +93,7 @@ export class MarketService implements OnModuleInit, OnModuleDestroy {
         exchangeConfig,
         (data: TickerData) => this.handleTickerUpdate(data),
         (data: OrderBookData) => this.handleOrderBookUpdate(data),
+        (data: KlineData) => this.handleKlineUpdate(data),
         (error: Error) => this.handleAdapterError(exchangeId, standardSymbol, error),
       );
 
@@ -100,6 +102,12 @@ export class MarketService implements OnModuleInit, OnModuleDestroy {
 
       // Connect orderbook stream
       adapter.connectOrderBook(nativeSymbol, standardSymbol);
+
+      // Connect kline stream (temporarily only subscribe to 1m to avoid WebSocket conflicts)
+      // TODO: Refactor to use single WebSocket with multiple subscriptions
+      adapter.connectKline(nativeSymbol, standardSymbol, '1m');
+      this.logger.warn(`⚠️ Currently only subscribing to 1m interval due to WebSocket architecture limitations`);
+      this.logger.warn(`⚠️ See docs/KLINE-MULTI-INTERVAL-ARCHITECTURE-ISSUE.md for details`);
 
       this.adapters.set(key, adapter);
 
@@ -161,13 +169,37 @@ export class MarketService implements OnModuleInit, OnModuleDestroy {
       if (Math.random() < 0.01) {
         const bestBid = data.bids[0] ? parseFloat(data.bids[0][0]) : 0;
         const bestAsk = data.asks[0] ? parseFloat(data.asks[0][0]) : 0;
-        const spread = bestAsk - bestBid;
+        // Only calculate spread if both bid and ask exist
+        const spread = (data.bids[0] && data.asks[0]) ? bestAsk - bestBid : 0;
         this.logger.debug(
           `${data.exchange} ${data.symbol} orderbook: bid $${bestBid.toFixed(2)} / ask $${bestAsk.toFixed(2)} / spread $${spread.toFixed(2)}`,
         );
       }
     } catch (error) {
       this.logger.error(`Failed to handle orderbook update: ${error.message}`);
+    }
+  }
+
+  /**
+   * Handle kline data update
+   */
+  private async handleKlineUpdate(data: KlineData): Promise<void> {
+    try {
+      // Redis cache key: kline:exchange:symbol:interval (latest kline)
+      const cacheKey = `kline:${data.exchange}:${data.symbol}:${data.interval}:latest`;
+      const ttl = this.getKlineCacheTTL(data.interval);
+      await this.redis.setex(cacheKey, ttl, JSON.stringify(data));
+
+      // Broadcast to WebSocket clients
+      this.marketGateway.broadcastKline(data);
+
+      if (Math.random() < 0.01) {
+        this.logger.debug(
+          `${data.exchange} ${data.symbol} ${data.interval} kline: O=${data.open.toFixed(2)} H=${data.high.toFixed(2)} L=${data.low.toFixed(2)} C=${data.close.toFixed(2)} isClosed=${data.isClosed}`,
+        );
+      }
+    } catch (error) {
+      this.logger.error(`Failed to handle kline update: ${error.message}`);
     }
   }
 
@@ -225,6 +257,81 @@ export class MarketService implements OnModuleInit, OnModuleDestroy {
     }
 
     return status;
+  }
+
+  /**
+   * Fetch historical kline data
+   */
+  async fetchKlineHistory(
+    exchange: string,
+    symbol: string,
+    interval: string,
+    limit: number,
+  ): Promise<KlineData[]> {
+    // Check Redis cache first
+    const cacheKey = `kline:${exchange}:${symbol}:${interval}:history`;
+    try {
+      const cached = await this.redis.get(cacheKey);
+      if (cached) {
+        this.logger.debug(`Kline cache hit for ${cacheKey}`);
+        return JSON.parse(cached);
+      }
+    } catch (error) {
+      this.logger.warn(`Failed to read kline cache: ${error.message}`);
+    }
+
+    // Find adapter
+    const adapterKey = `${exchange}:${symbol}`;
+    const adapter = this.adapters.get(adapterKey);
+
+    if (!adapter) {
+      throw new NotFoundException(`No adapter found for ${exchange}:${symbol}`);
+    }
+
+    // Get native symbol from config
+    const exchangeConfig = EXCHANGES_CONFIG.exchanges[exchange];
+    if (!exchangeConfig) {
+      throw new NotFoundException(`Exchange ${exchange} not found`);
+    }
+
+    const tradingPairs = getEnabledTradingPairs();
+    const pair = tradingPairs.find(p => p.symbol === symbol);
+    if (!pair || !pair.exchanges[exchange]) {
+      throw new NotFoundException(`Trading pair ${symbol} not found on ${exchange}`);
+    }
+
+    const nativeSymbol = pair.exchanges[exchange].nativeSymbol;
+
+    // Fetch from exchange REST API
+    try {
+      const data = await adapter.fetchKlineHistory(nativeSymbol, symbol, interval, limit);
+
+      // Cache the result
+      const ttl = this.getKlineCacheTTL(interval);
+      await this.redis.setex(cacheKey, ttl, JSON.stringify(data));
+
+      this.logger.log(`Fetched ${data.length} ${interval} klines for ${exchange}:${symbol}`);
+
+      return data;
+    } catch (error) {
+      this.logger.error(`Failed to fetch kline history: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Get kline cache TTL based on interval
+   */
+  private getKlineCacheTTL(interval: string): number {
+    const ttlMap: Record<string, number> = {
+      '1s': 60,      // 1 minute
+      '1m': 60,      // 1 minute
+      '15m': 300,    // 5 minutes
+      '1h': 300,     // 5 minutes
+      '1d': 1800,    // 30 minutes
+      '1w': 3600,    // 1 hour
+    };
+    return ttlMap[interval] || 300;
   }
 
   /**

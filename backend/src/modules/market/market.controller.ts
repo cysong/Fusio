@@ -1,6 +1,7 @@
-import { Controller, Get, Param } from '@nestjs/common';
+import { Controller, Get, Param, Query } from '@nestjs/common';
 import { MarketService } from './market.service';
 import { TickerData } from './interfaces/ticker.interface';
+import { KlineData } from './interfaces/kline.interface';
 
 @Controller('market')
 export class MarketController {
@@ -59,5 +60,38 @@ export class MarketController {
   @Get('status')
   getStatus(): Record<string, boolean> {
     return this.marketService.getConnectionStatus();
+  }
+
+  /**
+   * Get historical kline data for a specific exchange and trading pair
+   * GET /api/market/kline/:exchange/:base/:quote
+   * Example: /api/market/kline/binance/BTC/USDT?interval=1m&limit=500
+   */
+  @Get('kline/:exchange/:base/:quote')
+  async getKline(
+    @Param('exchange') exchange: string,
+    @Param('base') base: string,
+    @Param('quote') quote: string,
+    @Query('interval') interval: string = '1m',
+    @Query('limit') limit: string = '500',
+  ): Promise<KlineData[]> {
+    const symbol = `${base}/${quote}`;
+    const limitNumber = parseInt(limit, 10);
+    
+    if (isNaN(limitNumber) || limitNumber <= 0 || limitNumber > 1000) {
+      throw new Error('Invalid limit parameter. Must be between 1 and 1000.');
+    }
+
+    const validIntervals = ['1s', '1m', '15m', '1h', '1d', '1w'];
+    if (!validIntervals.includes(interval)) {
+      throw new Error(`Invalid interval. Must be one of: ${validIntervals.join(', ')}`);
+    }
+
+    return await this.marketService.fetchKlineHistory(
+      exchange,
+      symbol,
+      interval,
+      limitNumber,
+    );
   }
 }

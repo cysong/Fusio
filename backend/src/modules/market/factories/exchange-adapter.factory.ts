@@ -5,6 +5,7 @@ import { BybitAdapter } from '../adapters/bybit.adapter';
 import { OkxAdapter } from '../adapters/okx.adapter';
 import { TickerData } from '../interfaces/ticker.interface';
 import { OrderBookData } from '../interfaces/orderbook.interface';
+import { KlineData } from '../interfaces/kline.interface';
 import { ExchangeConfig } from '../interfaces/exchange-config.interface';
 
 /**
@@ -22,17 +23,18 @@ export class ExchangeAdapterFactory {
     config: ExchangeConfig,
     onTickerUpdate: (data: TickerData) => void,
     onOrderBookUpdate?: (data: OrderBookData) => void,
+    onKlineUpdate?: (data: KlineData) => void,
     onError?: (error: Error) => void,
   ): BaseExchangeAdapter {
     this.logger.log(`Creating adapter for ${config.name}`);
 
     switch (config.id) {
       case 'binance':
-        return new BinanceAdapter(config, onTickerUpdate, onOrderBookUpdate, onError);
+        return new BinanceAdapter(config, onTickerUpdate, onOrderBookUpdate, onKlineUpdate, onError);
       case 'bybit':
-        return new BybitAdapter(config, onTickerUpdate, onOrderBookUpdate, onError);
+        return new BybitAdapter(config, onTickerUpdate, onOrderBookUpdate, onKlineUpdate, onError);
       case 'okx':
-        return new OkxAdapter(config, onTickerUpdate, onOrderBookUpdate, onError);
+        return new OkxAdapter(config, onTickerUpdate, onOrderBookUpdate, onKlineUpdate, onError);
       default:
         throw new Error(`Unsupported exchange: ${config.id}`);
     }

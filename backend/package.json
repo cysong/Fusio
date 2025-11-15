@@ -31,6 +31,7 @@
     "@nestjs/typeorm": "^11.0.0",
     "@nestjs/websockets": "^11.1.8",
     "@types/ws": "^8.18.1",
+    "axios": "^1.13.2",
     "bcrypt": "^6.0.0",
     "better-sqlite3": "^12.4.1",
     "class-transformer": "^0.5.1",

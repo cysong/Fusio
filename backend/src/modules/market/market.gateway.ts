@@ -8,6 +8,7 @@ import { Server, Socket } from 'socket.io';
 import { Logger } from '@nestjs/common';
 import { TickerData } from './interfaces/ticker.interface';
 import { OrderBookData } from './interfaces/orderbook.interface';
+import { KlineData } from './interfaces/kline.interface';
 
 @WebSocketGateway({
   cors: {
@@ -45,5 +46,9 @@ export class MarketGateway
 
   broadcastOrderBook(data: OrderBookData): void {
     this.server.emit('orderbook', data);
+  }
+
+  broadcastKline(data: KlineData): void {
+    this.server.emit('kline', data);
   }
 }

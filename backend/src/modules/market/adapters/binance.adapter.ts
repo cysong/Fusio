@@ -1,7 +1,9 @@
 import WebSocket from 'ws';
+import axios from 'axios';
 import { BaseExchangeAdapter } from './base-exchange.adapter';
 import { TickerData } from '../interfaces/ticker.interface';
 import { OrderBookData } from '../interfaces/orderbook.interface';
+import { KlineData } from '../interfaces/kline.interface';
 
 /**
  * Binance WebSocket adapter
@@ -90,9 +92,101 @@ export class BinanceAdapter extends BaseExchangeAdapter {
     });
   }
 
+  async connectKline(nativeSymbol: string, standardSymbol: string, interval: string): Promise<void> {
+    const mappedInterval = this.mapInterval(interval);
+    const wsUrl = `${this.config.wsEndpoint}/${nativeSymbol}@kline_${mappedInterval}`;
+    this.logger.log(`Connecting to Kline ${wsUrl}`);
+
+    this.klineWs = new WebSocket(wsUrl);
+
+    this.klineWs.on('open', () => {
+      this.isKlineConnected = true;
+      this.resetKlineReconnectAttempts();
+      this.clearKlineReconnectTimer();
+      this.logger.log(`Kline connected to ${standardSymbol} ${interval}`);
+    });
+
+    this.klineWs.on('message', (data: WebSocket.Data) => {
+      try {
+        const raw = JSON.parse(data.toString());
+        // Binance kline data is nested under 'k' property
+        if (raw.k) {
+          const normalized = this.normalizeKlineData(raw.k, standardSymbol, interval);
+          if (this.onKlineUpdate) {
+            this.onKlineUpdate(normalized);
+          }
+        }
+      } catch (error) {
+        this.logger.error(`Failed to parse kline message: ${error.message}`);
+        if (this.onError) {
+          this.onError(error);
+        }
+      }
+    });
+
+    this.klineWs.on('error', (error: Error) => {
+      this.logger.error(`Kline WebSocket error for ${standardSymbol}: ${error.message}`);
+      if (this.onError) {
+        this.onError(error);
+      }
+    });
+
+    this.klineWs.on('close', () => {
+      this.isKlineConnected = false;
+      this.logger.warn(`Kline WebSocket closed for ${standardSymbol}`);
+      this.scheduleKlineReconnect(nativeSymbol, standardSymbol, interval);
+    });
+  }
+
+  async fetchKlineHistory(
+    nativeSymbol: string,
+    standardSymbol: string,
+    interval: string,
+    limit: number,
+  ): Promise<KlineData[]> {
+    const mappedInterval = this.mapInterval(interval);
+    const url = 'https://api.binance.com/api/v3/klines';
+    
+    try {
+      this.logger.log(`Fetching ${limit} ${interval} klines for ${standardSymbol} from Binance REST API`);
+      
+      const response = await axios.get(url, {
+        params: {
+          symbol: nativeSymbol.toUpperCase(),
+          interval: mappedInterval,
+          limit: Math.min(limit, 1000), // Binance max is 1000
+        },
+      });
+
+      // Binance kline format: [
+      //   [timestamp, open, high, low, close, volume, closeTime, quoteVolume, trades, takerBuyBase, takerBuyQuote, ignore]
+      // ]
+      return response.data.map((kline: any[]) => ({
+        exchange: this.config.id,
+        symbol: standardSymbol,
+        interval,
+        timestamp: kline[0], // Opening time
+        open: parseFloat(kline[1]),
+        high: parseFloat(kline[2]),
+        low: parseFloat(kline[3]),
+        close: parseFloat(kline[4]),
+        volume: parseFloat(kline[5]),
+        isClosed: true, // Historical data is always closed
+        source: {
+          nativeSymbol: nativeSymbol,
+          exchangeTimestamp: kline[6], // Closing time
+        },
+      }));
+    } catch (error) {
+      this.logger.error(`Failed to fetch kline history: ${error.message}`);
+      throw error;
+    }
+  }
+
   disconnect(): void {
     this.clearReconnectTimer();
     this.clearOrderbookReconnectTimer();
+    this.clearKlineReconnectTimer();
     if (this.ws) {
       this.isConnected = false;
       this.ws.close();
@@ -102,6 +196,11 @@ export class BinanceAdapter extends BaseExchangeAdapter {
       this.isOrderbookConnected = false;
       this.orderbookWs.close();
       this.orderbookWs = null;
+    }
+    if (this.klineWs) {
+      this.isKlineConnected = false;
+      this.klineWs.close();
+      this.klineWs = null;
     }
     this.logger.log('Disconnected');
   }
@@ -146,5 +245,39 @@ export class BinanceAdapter extends BaseExchangeAdapter {
         updateId: raw.lastUpdateId || raw.u,
       },
     };
+  }
+
+  protected normalizeKlineData(raw: any, standardSymbol: string, interval: string): KlineData {
+    return {
+      exchange: this.config.id,
+      symbol: standardSymbol,
+      interval,
+      timestamp: raw.t, // Opening time
+      open: parseFloat(raw.o),
+      high: parseFloat(raw.h),
+      low: parseFloat(raw.l),
+      close: parseFloat(raw.c),
+      volume: parseFloat(raw.v),
+      isClosed: raw.x, // Is this kline closed? (critical field!)
+      source: {
+        nativeSymbol: raw.s?.toLowerCase() || '',
+        exchangeTimestamp: raw.T, // Closing time
+      },
+    };
+  }
+
+  /**
+   * Map standard interval format to Binance-specific format
+   */
+  private mapInterval(interval: string): string {
+    const intervalMap: Record<string, string> = {
+      '1s': '1s',
+      '1m': '1m',
+      '15m': '15m',
+      '1h': '1h',
+      '1d': '1d',
+      '1w': '1w',
+    };
+    return intervalMap[interval] || '1m';
   }
 }

@@ -1,6 +1,7 @@
 import { Logger } from '@nestjs/common';
 import { TickerData } from '../interfaces/ticker.interface';
 import { OrderBookData } from '../interfaces/orderbook.interface';
+import { KlineData } from '../interfaces/kline.interface';
 import { ExchangeConfig } from '../interfaces/exchange-config.interface';
 
 /**
@@ -11,17 +12,22 @@ export abstract class BaseExchangeAdapter {
   protected logger: Logger;
   protected ws: any = null;
   protected orderbookWs: any = null;
+  protected klineWs: any = null;
   protected reconnectAttempts = 0;
   protected reconnectTimer: NodeJS.Timeout | null = null;
   protected orderbookReconnectAttempts = 0;
   protected orderbookReconnectTimer: NodeJS.Timeout | null = null;
+  protected klineReconnectAttempts = 0;
+  protected klineReconnectTimer: NodeJS.Timeout | null = null;
   protected isConnected = false;
   protected isOrderbookConnected = false;
+  protected isKlineConnected = false;
 
   constructor(
     protected readonly config: ExchangeConfig,
     protected readonly onTickerUpdate: (data: TickerData) => void,
     protected readonly onOrderBookUpdate?: (data: OrderBookData) => void,
+    protected readonly onKlineUpdate?: (data: KlineData) => void,
     protected readonly onError?: (error: Error) => void,
   ) {
     this.logger = new Logger(`${config.name}Adapter`);
@@ -38,6 +44,21 @@ export abstract class BaseExchangeAdapter {
   abstract connectOrderBook(nativeSymbol: string, standardSymbol: string, depth?: number): Promise<void>;
 
   /**
+   * Connect to exchange WebSocket for kline
+   */
+  abstract connectKline(nativeSymbol: string, standardSymbol: string, interval: string): Promise<void>;
+
+  /**
+   * Fetch historical kline data via REST API
+   */
+  abstract fetchKlineHistory(
+    nativeSymbol: string,
+    standardSymbol: string,
+    interval: string,
+    limit: number,
+  ): Promise<KlineData[]>;
+
+  /**
    * Disconnect from exchange WebSocket
    */
   abstract disconnect(): void;
@@ -51,6 +72,11 @@ export abstract class BaseExchangeAdapter {
    * Normalize raw orderbook data to standard format
    */
   protected abstract normalizeOrderBookData(raw: any, standardSymbol: string): OrderBookData;
+
+  /**
+   * Normalize raw kline data to standard format
+   */
+  protected abstract normalizeKlineData(raw: any, standardSymbol: string, interval: string): KlineData;
 
   /**
    * Get WebSocket URL for specific symbol
@@ -146,6 +172,51 @@ export abstract class BaseExchangeAdapter {
    */
   protected resetOrderbookReconnectAttempts(): void {
     this.orderbookReconnectAttempts = 0;
+  }
+
+  /**
+   * Common reconnection logic for kline streams
+   */
+  protected scheduleKlineReconnect(
+    nativeSymbol: string,
+    standardSymbol: string,
+    interval: string,
+  ): void {
+    if (this.klineReconnectAttempts >= this.config.reconnect.maxAttempts) {
+      this.logger.error(
+        `Max kline reconnection attempts (${this.config.reconnect.maxAttempts}) reached for ${standardSymbol}`,
+      );
+      return;
+    }
+
+    this.klineReconnectAttempts++;
+    this.logger.warn(
+      `Scheduling kline reconnection attempt ${this.klineReconnectAttempts}/${this.config.reconnect.maxAttempts} in ${this.config.reconnect.delayMs}ms`,
+    );
+
+    this.klineReconnectTimer = setTimeout(() => {
+      this.connectKline(nativeSymbol, standardSymbol, interval).catch((err) => {
+        this.logger.error(`Kline reconnection failed: ${err.message}`);
+        this.scheduleKlineReconnect(nativeSymbol, standardSymbol, interval);
+      });
+    }, this.config.reconnect.delayMs);
+  }
+
+  /**
+   * Clear kline reconnection timer
+   */
+  protected clearKlineReconnectTimer(): void {
+    if (this.klineReconnectTimer) {
+      clearTimeout(this.klineReconnectTimer);
+      this.klineReconnectTimer = null;
+    }
+  }
+
+  /**
+   * Reset kline reconnection attempts counter
+   */
+  protected resetKlineReconnectAttempts(): void {
+    this.klineReconnectAttempts = 0;
   }
 
   /**

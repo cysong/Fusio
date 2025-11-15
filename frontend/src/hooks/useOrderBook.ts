@@ -7,14 +7,13 @@ import { socketClient } from '@/lib/socket';
  * Automatically updates the trading store when new orderbook data arrives
  */
 export function useOrderBook() {
-  const updateOrderBook = useTradingStore((state) => state.updateOrderBook);
-
   useEffect(() => {
     const socket = socketClient.connect();
 
     const handleOrderBook = (data: OrderBookData) => {
       const key = `${data.exchange}:${data.symbol}`;
-      updateOrderBook(key, data);
+      // Get the function directly from the store to avoid dependency issues
+      useTradingStore.getState().updateOrderBook(key, data);
     };
 
     // Subscribe to orderbook events
@@ -24,5 +23,5 @@ export function useOrderBook() {
     return () => {
       socket.off('orderbook', handleOrderBook);
     };
-  }, [updateOrderBook]);
+  }, []); // Empty deps - socket connection should only happen once
 }
