@@ -109,6 +109,8 @@ export class BybitAdapter extends BaseExchangeAdapter {
 
     this.orderbookWs.on('open', () => {
       this.isOrderbookConnected = true;
+      this.resetOrderbookReconnectAttempts();
+      this.clearOrderbookReconnectTimer();
       this.logger.log(`OrderBook connected to ${standardSymbol}`);
 
       // Subscribe to orderbook with depth (1, 50, or 200)
@@ -164,11 +166,13 @@ export class BybitAdapter extends BaseExchangeAdapter {
       this.isOrderbookConnected = false;
       this.stopOrderbookPingInterval();
       this.logger.warn(`OrderBook WebSocket closed for ${standardSymbol}`);
+      this.scheduleOrderbookReconnect(nativeSymbol, standardSymbol, depth);
     });
   }
 
   disconnect(): void {
     this.clearReconnectTimer();
+    this.clearOrderbookReconnectTimer();
     this.stopPingInterval();
     this.stopOrderbookPingInterval();
     if (this.ws) {

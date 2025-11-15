@@ -56,6 +56,8 @@ export class BinanceAdapter extends BaseExchangeAdapter {
 
     this.orderbookWs.on('open', () => {
       this.isOrderbookConnected = true;
+      this.resetOrderbookReconnectAttempts();
+      this.clearOrderbookReconnectTimer();
       this.logger.log(`OrderBook connected to ${standardSymbol}`);
     });
 
@@ -84,11 +86,13 @@ export class BinanceAdapter extends BaseExchangeAdapter {
     this.orderbookWs.on('close', () => {
       this.isOrderbookConnected = false;
       this.logger.warn(`OrderBook WebSocket closed for ${standardSymbol}`);
+      this.scheduleOrderbookReconnect(nativeSymbol, standardSymbol, depth);
     });
   }
 
   disconnect(): void {
     this.clearReconnectTimer();
+    this.clearOrderbookReconnectTimer();
     if (this.ws) {
       this.isConnected = false;
       this.ws.close();

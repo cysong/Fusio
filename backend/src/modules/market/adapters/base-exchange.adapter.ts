@@ -13,6 +13,8 @@ export abstract class BaseExchangeAdapter {
   protected orderbookWs: any = null;
   protected reconnectAttempts = 0;
   protected reconnectTimer: NodeJS.Timeout | null = null;
+  protected orderbookReconnectAttempts = 0;
+  protected orderbookReconnectTimer: NodeJS.Timeout | null = null;
   protected isConnected = false;
   protected isOrderbookConnected = false;
 
@@ -85,6 +87,34 @@ export abstract class BaseExchangeAdapter {
   }
 
   /**
+   * Common reconnection logic for orderbook streams
+   */
+  protected scheduleOrderbookReconnect(
+    nativeSymbol: string,
+    standardSymbol: string,
+    depth?: number,
+  ): void {
+    if (this.orderbookReconnectAttempts >= this.config.reconnect.maxAttempts) {
+      this.logger.error(
+        `Max orderbook reconnection attempts (${this.config.reconnect.maxAttempts}) reached for ${standardSymbol}`,
+      );
+      return;
+    }
+
+    this.orderbookReconnectAttempts++;
+    this.logger.warn(
+      `Scheduling orderbook reconnection attempt ${this.orderbookReconnectAttempts}/${this.config.reconnect.maxAttempts} in ${this.config.reconnect.delayMs}ms`,
+    );
+
+    this.orderbookReconnectTimer = setTimeout(() => {
+      this.connectOrderBook(nativeSymbol, standardSymbol, depth).catch((err) => {
+        this.logger.error(`Orderbook reconnection failed: ${err.message}`);
+        this.scheduleOrderbookReconnect(nativeSymbol, standardSymbol, depth);
+      });
+    }, this.config.reconnect.delayMs);
+  }
+
+  /**
    * Clear reconnection timer
    */
   protected clearReconnectTimer(): void {
@@ -95,10 +125,27 @@ export abstract class BaseExchangeAdapter {
   }
 
   /**
+   * Clear orderbook reconnection timer
+   */
+  protected clearOrderbookReconnectTimer(): void {
+    if (this.orderbookReconnectTimer) {
+      clearTimeout(this.orderbookReconnectTimer);
+      this.orderbookReconnectTimer = null;
+    }
+  }
+
+  /**
    * Reset reconnection attempts counter
    */
   protected resetReconnectAttempts(): void {
     this.reconnectAttempts = 0;
+  }
+
+  /**
+   * Reset orderbook reconnection attempts counter
+   */
+  protected resetOrderbookReconnectAttempts(): void {
+    this.orderbookReconnectAttempts = 0;
   }
 
   /**

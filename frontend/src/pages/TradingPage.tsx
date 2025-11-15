@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import TradingLayout from '@/components/TradingLayout';
 import TradingHeader from '@/components/TradingHeader';
+import OrderBook from '@/components/OrderBook';
+import { useOrderBook } from '@/hooks/useOrderBook';
 
 export default function TradingPage() {
   const { symbol } = useParams<{ symbol?: string }>();
@@ -15,6 +17,9 @@ export default function TradingPage() {
   // Local state for symbol and exchange
   const [currentSymbol, setCurrentSymbol] = useState(initialSymbol);
   const [currentExchange, setCurrentExchange] = useState(initialExchange);
+
+  // Subscribe to OrderBook WebSocket updates
+  useOrderBook();
 
   useEffect(() => {
     console.log('Trading Page:', { symbol: currentSymbol, exchange: currentExchange });
@@ -45,10 +50,7 @@ export default function TradingPage() {
         />
       }
       orderBook={
-        <div style={{ padding: 16 }}>
-          <h3>Order Book</h3>
-          <p style={{ color: '#888' }}>Coming in Stage 2-3</p>
-        </div>
+        <OrderBook symbol={currentSymbol} exchange={currentExchange} />
       }
       chart={
         <div style={{ padding: 16 }}>

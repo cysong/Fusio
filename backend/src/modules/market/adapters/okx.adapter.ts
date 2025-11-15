@@ -140,6 +140,8 @@ export class OkxAdapter extends BaseExchangeAdapter {
 
     this.orderbookWs.on('open', () => {
       this.isOrderbookConnected = true;
+      this.resetOrderbookReconnectAttempts();
+      this.clearOrderbookReconnectTimer();
       this.logger.log(`OrderBook connected to ${standardSymbol}`);
 
       // Subscribe to orderbook channel (books5 for 5 levels, books for 400 levels)
@@ -210,11 +212,13 @@ export class OkxAdapter extends BaseExchangeAdapter {
       this.isOrderbookConnected = false;
       this.stopOrderbookPingInterval();
       this.logger.warn(`OrderBook WebSocket closed for ${standardSymbol}`);
+      this.scheduleOrderbookReconnect(nativeSymbol, standardSymbol, depth);
     });
   }
 
   disconnect(): void {
     this.clearReconnectTimer();
+    this.clearOrderbookReconnectTimer();
     this.stopPingInterval();
     this.stopOrderbookPingInterval();
     if (this.ws) {
