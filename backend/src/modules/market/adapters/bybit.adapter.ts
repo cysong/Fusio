@@ -1,6 +1,7 @@
 import WebSocket from 'ws';
 import { BaseExchangeAdapter } from './base-exchange.adapter';
 import { TickerData } from '../interfaces/ticker.interface';
+import { OrderBookData } from '../interfaces/orderbook.interface';
 
 /**
  * Bybit WebSocket V5 Spot Ticker Adapter
@@ -31,6 +32,7 @@ import { TickerData } from '../interfaces/ticker.interface';
  */
 export class BybitAdapter extends BaseExchangeAdapter {
   private pingInterval: NodeJS.Timeout | null = null;
+  private orderbookPingInterval: NodeJS.Timeout | null = null;
 
   async connect(nativeSymbol: string, standardSymbol: string): Promise<void> {
     const wsUrl = this.getWebSocketUrl(nativeSymbol);
@@ -99,19 +101,96 @@ export class BybitAdapter extends BaseExchangeAdapter {
     });
   }
 
+  async connectOrderBook(nativeSymbol: string, standardSymbol: string, depth = 50): Promise<void> {
+    const wsUrl = this.getOrderBookWebSocketUrl(nativeSymbol);
+    this.logger.log(`Connecting to OrderBook ${wsUrl}`);
+
+    this.orderbookWs = new WebSocket(wsUrl);
+
+    this.orderbookWs.on('open', () => {
+      this.isOrderbookConnected = true;
+      this.logger.log(`OrderBook connected to ${standardSymbol}`);
+
+      // Subscribe to orderbook with depth (1, 50, or 200)
+      const subscribeMsg = {
+        op: 'subscribe',
+        args: [`orderbook.${depth}.${nativeSymbol}`],
+      };
+      this.orderbookWs.send(JSON.stringify(subscribeMsg));
+      this.logger.log(`Subscribed to orderbook.${depth}.${nativeSymbol}`);
+
+      // Start ping interval
+      this.startOrderbookPingInterval();
+    });
+
+    this.orderbookWs.on('message', (data: WebSocket.Data) => {
+      try {
+        const raw = JSON.parse(data.toString());
+
+        // Handle subscription confirmation
+        if (raw.op === 'subscribe') {
+          this.logger.log(`OrderBook subscription confirmed: ${raw.success}`);
+          return;
+        }
+
+        // Handle pong response
+        if (raw.op === 'pong') {
+          return;
+        }
+
+        // Process orderbook data
+        if (raw.topic && raw.topic.startsWith('orderbook.')) {
+          const normalized = this.normalizeOrderBookData(raw, standardSymbol);
+          if (this.onOrderBookUpdate) {
+            this.onOrderBookUpdate(normalized);
+          }
+        }
+      } catch (error) {
+        this.logger.error(`Failed to parse orderbook message: ${error.message}`);
+        if (this.onError) {
+          this.onError(error);
+        }
+      }
+    });
+
+    this.orderbookWs.on('error', (error: Error) => {
+      this.logger.error(`OrderBook WebSocket error for ${standardSymbol}: ${error.message}`);
+      if (this.onError) {
+        this.onError(error);
+      }
+    });
+
+    this.orderbookWs.on('close', () => {
+      this.isOrderbookConnected = false;
+      this.stopOrderbookPingInterval();
+      this.logger.warn(`OrderBook WebSocket closed for ${standardSymbol}`);
+    });
+  }
+
   disconnect(): void {
     this.clearReconnectTimer();
     this.stopPingInterval();
+    this.stopOrderbookPingInterval();
     if (this.ws) {
       this.isConnected = false;
       this.ws.close();
       this.ws = null;
-      this.logger.log('Disconnected');
     }
+    if (this.orderbookWs) {
+      this.isOrderbookConnected = false;
+      this.orderbookWs.close();
+      this.orderbookWs = null;
+    }
+    this.logger.log('Disconnected');
   }
 
   protected getWebSocketUrl(nativeSymbol: string): string {
     // Bybit V5 doesn't require symbol in URL
+    return this.config.wsEndpoint;
+  }
+
+  protected getOrderBookWebSocketUrl(nativeSymbol: string): string {
+    // Same endpoint for orderbook
     return this.config.wsEndpoint;
   }
 
@@ -137,6 +216,22 @@ export class BybitAdapter extends BaseExchangeAdapter {
     };
   }
 
+  protected normalizeOrderBookData(raw: any, standardSymbol: string): OrderBookData {
+    const data = raw.data;
+    return {
+      exchange: this.config.id,
+      symbol: standardSymbol,
+      bids: data.b || [],
+      asks: data.a || [],
+      timestamp: Date.now(),
+      source: {
+        nativeSymbol: data.s || standardSymbol.replace('/', ''),
+        exchangeTimestamp: raw.ts || Date.now(),
+        updateId: data.u,
+      },
+    };
+  }
+
   /**
    * Bybit requires periodic ping to keep connection alive
    */
@@ -152,6 +247,21 @@ export class BybitAdapter extends BaseExchangeAdapter {
     if (this.pingInterval) {
       clearInterval(this.pingInterval);
       this.pingInterval = null;
+    }
+  }
+
+  private startOrderbookPingInterval(): void {
+    this.orderbookPingInterval = setInterval(() => {
+      if (this.orderbookWs && this.isOrderbookConnected) {
+        this.orderbookWs.send(JSON.stringify({ op: 'ping' }));
+      }
+    }, 20000); // Ping every 20 seconds
+  }
+
+  private stopOrderbookPingInterval(): void {
+    if (this.orderbookPingInterval) {
+      clearInterval(this.orderbookPingInterval);
+      this.orderbookPingInterval = null;
     }
   }
 }

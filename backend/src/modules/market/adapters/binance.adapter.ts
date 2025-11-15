@@ -1,6 +1,7 @@
 import WebSocket from 'ws';
 import { BaseExchangeAdapter } from './base-exchange.adapter';
 import { TickerData } from '../interfaces/ticker.interface';
+import { OrderBookData } from '../interfaces/orderbook.interface';
 
 /**
  * Binance WebSocket adapter
@@ -47,18 +48,67 @@ export class BinanceAdapter extends BaseExchangeAdapter {
     });
   }
 
+  async connectOrderBook(nativeSymbol: string, standardSymbol: string, depth = 10): Promise<void> {
+    const wsUrl = this.getOrderBookWebSocketUrl(nativeSymbol);
+    this.logger.log(`Connecting to OrderBook ${wsUrl}`);
+
+    this.orderbookWs = new WebSocket(wsUrl);
+
+    this.orderbookWs.on('open', () => {
+      this.isOrderbookConnected = true;
+      this.logger.log(`OrderBook connected to ${standardSymbol}`);
+    });
+
+    this.orderbookWs.on('message', (data: WebSocket.Data) => {
+      try {
+        const raw = JSON.parse(data.toString());
+        const normalized = this.normalizeOrderBookData(raw, standardSymbol);
+        if (this.onOrderBookUpdate) {
+          this.onOrderBookUpdate(normalized);
+        }
+      } catch (error) {
+        this.logger.error(`Failed to parse orderbook message: ${error.message}`);
+        if (this.onError) {
+          this.onError(error);
+        }
+      }
+    });
+
+    this.orderbookWs.on('error', (error: Error) => {
+      this.logger.error(`OrderBook WebSocket error for ${standardSymbol}: ${error.message}`);
+      if (this.onError) {
+        this.onError(error);
+      }
+    });
+
+    this.orderbookWs.on('close', () => {
+      this.isOrderbookConnected = false;
+      this.logger.warn(`OrderBook WebSocket closed for ${standardSymbol}`);
+    });
+  }
+
   disconnect(): void {
     this.clearReconnectTimer();
     if (this.ws) {
       this.isConnected = false;
       this.ws.close();
       this.ws = null;
-      this.logger.log('Disconnected');
     }
+    if (this.orderbookWs) {
+      this.isOrderbookConnected = false;
+      this.orderbookWs.close();
+      this.orderbookWs = null;
+    }
+    this.logger.log('Disconnected');
   }
 
   protected getWebSocketUrl(nativeSymbol: string): string {
     return `${this.config.wsEndpoint}/${nativeSymbol}@ticker`;
+  }
+
+  protected getOrderBookWebSocketUrl(nativeSymbol: string): string {
+    // Use depth10@100ms for 10 levels, updated every 100ms
+    return `${this.config.wsEndpoint}/${nativeSymbol}@depth10@100ms`;
   }
 
   protected normalizeTickerData(raw: any, standardSymbol: string): TickerData {
@@ -75,6 +125,21 @@ export class BinanceAdapter extends BaseExchangeAdapter {
       source: {
         nativeSymbol: raw.s,
         exchangeTimestamp: raw.E,
+      },
+    };
+  }
+
+  protected normalizeOrderBookData(raw: any, standardSymbol: string): OrderBookData {
+    return {
+      exchange: this.config.id,
+      symbol: standardSymbol,
+      bids: raw.bids || raw.b || [],
+      asks: raw.asks || raw.a || [],
+      timestamp: Date.now(),
+      source: {
+        nativeSymbol: standardSymbol.replace('/', ''),
+        exchangeTimestamp: raw.E || Date.now(),
+        updateId: raw.lastUpdateId || raw.u,
       },
     };
   }

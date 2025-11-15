@@ -6,6 +6,7 @@ import LandingPage from './pages/LandingPage';
 import MainLayout from './layouts/MainLayout';
 import Dashboard from './pages/Dashboard';
 import UserProfile from './pages/settings/UserProfile';
+import TradingPage from './pages/TradingPage';
 import ComingSoonPlaceholder from './components/ComingSoonPlaceholder';
 
 function App() {
@@ -43,16 +44,7 @@ function App() {
 
             {/* Trading */}
             <Route path="trading">
-              <Route
-                path="spot"
-                element={
-                  <ComingSoonPlaceholder
-                    title="Spot Trading"
-                    description="Execute trades across multiple exchanges with smart order routing."
-                    version="V0.4"
-                  />
-                }
-              />
+              <Route path=":symbol?" element={<TradingPage />} />
               <Route
                 path="orders"
                 element={

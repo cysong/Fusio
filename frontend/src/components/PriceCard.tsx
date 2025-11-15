@@ -2,6 +2,7 @@ import { Card, Statistic, Tag, Typography } from 'antd';
 import { ArrowUpOutlined, ArrowDownOutlined } from '@ant-design/icons';
 import type { TickerData } from '@/types/market';
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const { Text } = Typography;
 
@@ -10,6 +11,7 @@ interface PriceCardProps {
 }
 
 export default function PriceCard({ ticker }: PriceCardProps) {
+  const navigate = useNavigate();
   const [previousPrice, setPreviousPrice] = useState(ticker.price);
   const [flash, setFlash] = useState(false);
 
@@ -45,12 +47,22 @@ export default function PriceCard({ ticker }: PriceCardProps) {
     });
   };
 
+  const handleClick = () => {
+    // Navigate to trading page with symbol and exchange
+    // Symbol format: BTC/USDT -> BTC-USDT for URL
+    const urlSymbol = ticker.symbol.replace('/', '-');
+    navigate(`/app/trading/${urlSymbol}?exchange=${ticker.exchange}`);
+  };
+
   return (
     <Card
+      onClick={handleClick}
       style={{
         transition: 'all 0.3s',
         backgroundColor: flash ? (isPositive ? '#f6ffed' : '#fff2f0') : 'white',
+        cursor: 'pointer',
       }}
+      hoverable
     >
       <div style={{ marginBottom: 16 }}>
         <Tag color={getSymbolColor(ticker.symbol)}>{ticker.symbol}</Tag>

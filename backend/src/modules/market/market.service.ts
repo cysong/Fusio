@@ -3,6 +3,7 @@ import { InjectRedis } from '@nestjs-modules/ioredis';
 import Redis from 'ioredis';
 import { MarketGateway } from './market.gateway';
 import { TickerData } from './interfaces/ticker.interface';
+import { OrderBookData } from './interfaces/orderbook.interface';
 import { BaseExchangeAdapter } from './adapters/base-exchange.adapter';
 import { ExchangeAdapterFactory } from './factories/exchange-adapter.factory';
 import {
@@ -90,10 +91,16 @@ export class MarketService implements OnModuleInit, OnModuleDestroy {
       const adapter = this.adapterFactory.createAdapter(
         exchangeConfig,
         (data: TickerData) => this.handleTickerUpdate(data),
+        (data: OrderBookData) => this.handleOrderBookUpdate(data),
         (error: Error) => this.handleAdapterError(exchangeId, standardSymbol, error),
       );
 
+      // Connect ticker stream
       adapter.connect(nativeSymbol, standardSymbol);
+
+      // Connect orderbook stream
+      adapter.connectOrderBook(nativeSymbol, standardSymbol);
+
       this.adapters.set(key, adapter);
 
       this.logger.log(`Started stream: ${key} (${nativeSymbol})`);
@@ -136,6 +143,31 @@ export class MarketService implements OnModuleInit, OnModuleDestroy {
       }
     } catch (error) {
       this.logger.error(`Failed to handle ticker update: ${error.message}`);
+    }
+  }
+
+  /**
+   * Handle orderbook data update
+   */
+  private async handleOrderBookUpdate(data: OrderBookData): Promise<void> {
+    try {
+      // Redis cache key: orderbook:exchange:symbol
+      const cacheKey = `orderbook:${data.exchange}:${data.symbol}`;
+      await this.redis.setex(cacheKey, 10, JSON.stringify(data));
+
+      // Broadcast to WebSocket clients
+      this.marketGateway.broadcastOrderBook(data);
+
+      if (Math.random() < 0.01) {
+        const bestBid = data.bids[0] ? parseFloat(data.bids[0][0]) : 0;
+        const bestAsk = data.asks[0] ? parseFloat(data.asks[0][0]) : 0;
+        const spread = bestAsk - bestBid;
+        this.logger.debug(
+          `${data.exchange} ${data.symbol} orderbook: bid $${bestBid.toFixed(2)} / ask $${bestAsk.toFixed(2)} / spread $${spread.toFixed(2)}`,
+        );
+      }
+    } catch (error) {
+      this.logger.error(`Failed to handle orderbook update: ${error.message}`);
     }
   }
 

@@ -1,5 +1,6 @@
 import { Logger } from '@nestjs/common';
 import { TickerData } from '../interfaces/ticker.interface';
+import { OrderBookData } from '../interfaces/orderbook.interface';
 import { ExchangeConfig } from '../interfaces/exchange-config.interface';
 
 /**
@@ -9,22 +10,30 @@ import { ExchangeConfig } from '../interfaces/exchange-config.interface';
 export abstract class BaseExchangeAdapter {
   protected logger: Logger;
   protected ws: any = null;
+  protected orderbookWs: any = null;
   protected reconnectAttempts = 0;
   protected reconnectTimer: NodeJS.Timeout | null = null;
   protected isConnected = false;
+  protected isOrderbookConnected = false;
 
   constructor(
     protected readonly config: ExchangeConfig,
     protected readonly onTickerUpdate: (data: TickerData) => void,
+    protected readonly onOrderBookUpdate?: (data: OrderBookData) => void,
     protected readonly onError?: (error: Error) => void,
   ) {
     this.logger = new Logger(`${config.name}Adapter`);
   }
 
   /**
-   * Connect to exchange WebSocket
+   * Connect to exchange WebSocket for ticker
    */
   abstract connect(nativeSymbol: string, standardSymbol: string): Promise<void>;
+
+  /**
+   * Connect to exchange WebSocket for orderbook
+   */
+  abstract connectOrderBook(nativeSymbol: string, standardSymbol: string, depth?: number): Promise<void>;
 
   /**
    * Disconnect from exchange WebSocket
@@ -37,9 +46,19 @@ export abstract class BaseExchangeAdapter {
   protected abstract normalizeTickerData(raw: any, standardSymbol: string): TickerData;
 
   /**
+   * Normalize raw orderbook data to standard format
+   */
+  protected abstract normalizeOrderBookData(raw: any, standardSymbol: string): OrderBookData;
+
+  /**
    * Get WebSocket URL for specific symbol
    */
   protected abstract getWebSocketUrl(nativeSymbol: string): string;
+
+  /**
+   * Get WebSocket URL for orderbook
+   */
+  protected abstract getOrderBookWebSocketUrl(nativeSymbol: string): string;
 
   /**
    * Common reconnection logic
