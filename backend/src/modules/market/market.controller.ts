@@ -2,11 +2,11 @@ import { Controller, Get, Param, Query } from '@nestjs/common';
 import { MarketService } from './market.service';
 import { TickerData } from './interfaces/ticker.interface';
 import { KlineData } from './interfaces/kline.interface';
-import { SUPPORTED_INTERVALS } from '../../config/exchanges.config';
+import { SUPPORTED_INTERVALS, KLINE_CONFIG } from '../../config/exchanges.config';
 
 @Controller('market')
 export class MarketController {
-  constructor(private readonly marketService: MarketService) {}
+  constructor(private readonly marketService: MarketService) { }
 
   /**
    * Get ticker for a specific exchange and trading pair
@@ -73,14 +73,16 @@ export class MarketController {
     @Param('exchange') exchange: string,
     @Param('base') base: string,
     @Param('quote') quote: string,
-    @Query('interval') interval: string = '1m',
-    @Query('limit') limit: string = '500',
+    @Query('interval') interval: string = KLINE_CONFIG.defaultInterval,
+    @Query('limit') limit: string = String(KLINE_CONFIG.defaultLimit),
   ): Promise<KlineData[]> {
     const symbol = `${base}/${quote}`;
     const limitNumber = parseInt(limit, 10);
-    
-    if (isNaN(limitNumber) || limitNumber <= 0 || limitNumber > 1000) {
-      throw new Error('Invalid limit parameter. Must be between 1 and 1000.');
+
+    if (isNaN(limitNumber) || limitNumber < KLINE_CONFIG.minLimit || limitNumber > KLINE_CONFIG.maxLimit) {
+      throw new Error(
+        `Invalid limit parameter. Must be between ${KLINE_CONFIG.minLimit} and ${KLINE_CONFIG.maxLimit}.`
+      );
     }
 
     // Validate interval using global configuration

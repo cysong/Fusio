@@ -12,6 +12,44 @@ export const SUPPORTED_INTERVALS = ['1m', '15m', '1h', '4h', '1d', '1w', '1M'] a
 export type SupportedInterval = typeof SUPPORTED_INTERVALS[number];
 
 /**
+ * Cache TTL Configuration (缓存过期时间配置)
+ * Redis 缓存过期时间，根据数据更新频率设置
+ */
+export const CACHE_TTL_CONFIG = {
+  // Ticker 和 OrderBook 的 TTL（秒）
+  ticker: 10,      // 10 seconds - 实时价格数据更新频繁
+  orderbook: 10,   // 10 seconds - 订单薄数据更新频繁
+
+  // K线缓存 TTL（根据周期，秒）
+  // 周期越长，数据更新频率越低，TTL 可以设置更长
+  kline: {
+    '1m': 60,      // 1 minute - 1分钟周期，数据更新频繁
+    '15m': 300,    // 5 minutes - 15分钟周期
+    '1h': 300,     // 5 minutes - 1小时周期
+    '4h': 600,      // 10 minutes - 4小时周期
+    '1d': 1800,    // 30 minutes - 日线周期
+    '1w': 3600,    // 1 hour - 周线周期
+    '1M': 7200,    // 2 hours - 月线周期
+  },
+
+  // 默认 TTL（当周期未配置时使用）
+  default: 300,    // 5 minutes
+} as const;
+
+/**
+ * K-line API Configuration (K线API配置)
+ */
+export const KLINE_CONFIG = {
+  // 默认周期
+  defaultInterval: '1m' as SupportedInterval,
+
+  // Limit 参数配置
+  defaultLimit: 500,   // 默认返回 500 条
+  minLimit: 1,         // 最小 1 条
+  maxLimit: 1000,      // 最大 1000 条
+} as const;
+
+/**
  * Exchanges and trading pairs configuration
  * This file drives the multi-exchange aggregation system
  */

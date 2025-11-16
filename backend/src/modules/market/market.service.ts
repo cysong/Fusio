@@ -10,6 +10,7 @@ import { ExchangeAdapterFactory } from './factories/exchange-adapter.factory';
 import {
   EXCHANGES_CONFIG,
   SUPPORTED_INTERVALS,
+  CACHE_TTL_CONFIG,
   getEnabledExchanges,
   getEnabledTradingPairs,
 } from '../../config/exchanges.config';
@@ -145,7 +146,7 @@ export class MarketService implements OnModuleInit, OnModuleDestroy {
     try {
       // Redis cache key: ticker:exchange:symbol
       const cacheKey = `ticker:${data.exchange}:${data.symbol}`;
-      await this.redis.setex(cacheKey, 10, JSON.stringify(data));
+      await this.redis.setex(cacheKey, CACHE_TTL_CONFIG.ticker, JSON.stringify(data));
 
       // Broadcast to WebSocket clients
       this.marketGateway.broadcastTicker(data);
@@ -167,7 +168,7 @@ export class MarketService implements OnModuleInit, OnModuleDestroy {
     try {
       // Redis cache key: orderbook:exchange:symbol
       const cacheKey = `orderbook:${data.exchange}:${data.symbol}`;
-      await this.redis.setex(cacheKey, 10, JSON.stringify(data));
+      await this.redis.setex(cacheKey, CACHE_TTL_CONFIG.orderbook, JSON.stringify(data));
 
       // Broadcast to WebSocket clients
       this.marketGateway.broadcastOrderBook(data);
@@ -327,17 +328,11 @@ export class MarketService implements OnModuleInit, OnModuleDestroy {
 
   /**
    * Get kline cache TTL based on interval
+   * Now uses configuration from exchanges.config.ts
    */
   private getKlineCacheTTL(interval: string): number {
-    const ttlMap: Record<string, number> = {
-      '1s': 60,      // 1 minute
-      '1m': 60,      // 1 minute
-      '15m': 300,    // 5 minutes
-      '1h': 300,     // 5 minutes
-      '1d': 1800,    // 30 minutes
-      '1w': 3600,    // 1 hour
-    };
-    return ttlMap[interval] || 300;
+    return CACHE_TTL_CONFIG.kline[interval as keyof typeof CACHE_TTL_CONFIG.kline]
+      || CACHE_TTL_CONFIG.default;
   }
 
   /**
