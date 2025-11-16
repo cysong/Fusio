@@ -1,6 +1,17 @@
 import { ExchangesConfiguration } from '../modules/market/interfaces/exchange-config.interface';
 
 /**
+ * Supported K-line intervals (全局配置)
+ * 方案2B: 全时间维度覆盖 (分钟→月), 所有三大交易所(Binance/Bybit/OKX)都支持
+ */
+export const SUPPORTED_INTERVALS = ['1m', '15m', '1h', '4h', '1d', '1w', '1M'] as const;
+
+/**
+ * Supported intervals type
+ */
+export type SupportedInterval = typeof SUPPORTED_INTERVALS[number];
+
+/**
  * Exchanges and trading pairs configuration
  * This file drives the multi-exchange aggregation system
  */
@@ -19,6 +30,27 @@ export const EXCHANGES_CONFIG: ExchangesConfiguration = {
       rateLimit: {
         requestsPerSecond: 20,
       },
+      // K-line interval mapping (Binance uses same format as standard)
+      intervalMapping: {
+        toExchange: {
+          '1m': '1m',
+          '15m': '15m',
+          '1h': '1h',
+          '4h': '4h',
+          '1d': '1d',
+          '1w': '1w',
+          '1M': '1M',
+        },
+        fromExchange: {
+          '1m': '1m',
+          '15m': '15m',
+          '1h': '1h',
+          '4h': '4h',
+          '1d': '1d',
+          '1w': '1w',
+          '1M': '1M',
+        },
+      },
     },
     bybit: {
       id: 'bybit',
@@ -33,6 +65,27 @@ export const EXCHANGES_CONFIG: ExchangesConfiguration = {
       rateLimit: {
         requestsPerSecond: 10,
       },
+      // K-line interval mapping (Bybit uses numbers and letters)
+      intervalMapping: {
+        toExchange: {
+          '1m': '1',      // 1 minute
+          '15m': '15',    // 15 minutes
+          '1h': '60',     // 60 minutes
+          '4h': '240',    // 240 minutes
+          '1d': 'D',      // Day
+          '1w': 'W',      // Week
+          '1M': 'M',      // Month
+        },
+        fromExchange: {
+          '1': '1m',
+          '15': '15m',
+          '60': '1h',
+          '240': '4h',
+          'D': '1d',
+          'W': '1w',
+          'M': '1M',
+        },
+      },
     },
     okx: {
       id: 'okx',
@@ -46,6 +99,27 @@ export const EXCHANGES_CONFIG: ExchangesConfiguration = {
       },
       rateLimit: {
         requestsPerSecond: 10,
+      },
+      // K-line interval mapping (OKX uses uppercase suffixes)
+      intervalMapping: {
+        toExchange: {
+          '1m': '1m',
+          '15m': '15m',
+          '1h': '1H',     // Uppercase H
+          '4h': '4H',     // Uppercase H
+          '1d': '1D',     // Uppercase D
+          '1w': '1W',     // Uppercase W
+          '1M': '1M',     // Uppercase M
+        },
+        fromExchange: {
+          '1m': '1m',
+          '15m': '15m',
+          '1H': '1h',
+          '4H': '4h',
+          '1D': '1d',
+          '1W': '1w',
+          '1M': '1M',
+        },
       },
     },
   },

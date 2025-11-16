@@ -93,9 +93,52 @@ export class BinanceAdapter extends BaseExchangeAdapter {
   }
 
   async connectKline(nativeSymbol: string, standardSymbol: string, interval: string): Promise<void> {
-    const mappedInterval = this.mapInterval(interval);
+    // Check if already subscribed
+    if (this.isKlineIntervalSubscribed(nativeSymbol, interval)) {
+      this.logger.log(`Already subscribed to ${interval} for ${standardSymbol}`);
+      return;
+    }
+
+    // Store symbol for reconnection
+    if (!this.klineNativeSymbol) {
+      this.klineNativeSymbol = nativeSymbol;
+      this.klineStandardSymbol = standardSymbol;
+    }
+
+    // If WebSocket is not created or not connected, initialize it
+    if (!this.klineWs || !this.isKlineConnected) {
+      await this.initKlineWebSocket(nativeSymbol, standardSymbol);
+    }
+
+    // Wait for connection
+    await this.waitForKlineConnection();
+
+    // Subscribe to this interval (Binance uses combined stream, so just mark as subscribed)
+    this.markKlineIntervalSubscribed(nativeSymbol, interval);
+    this.logger.log(`Subscribed to ${interval} kline for ${standardSymbol}`);
+  }
+
+  /**
+   * Initialize K-line WebSocket with combined stream for all intervals
+   */
+  private async initKlineWebSocket(nativeSymbol: string, standardSymbol: string): Promise<void> {
+    if (this.klineWs && this.isKlineConnected) {
+      return;
+    }
+
+    // Binance combined stream URL (we'll add subscriptions dynamically)
+    // For now, start with a single stream, we can't subscribe to all at once in URL
+    // We need to use a different approach: separate connections or combined stream endpoint
+    // Let's use combined stream: wss://stream.binance.com:9443/stream
+    // But for simplicity, we'll create separate connections (Binance doesn't support subscription messages)
+
+    // Actually, Binance WebSocket doesn't support subscription after connection
+    // So we need to reconnect with all streams in the URL
+    // For now, let's use a workaround: create connection when first interval is requested
+
+    const mappedInterval = this.mapInterval('1m'); // Start with 1m, will be updated
     const wsUrl = `${this.config.wsEndpoint}/${nativeSymbol}@kline_${mappedInterval}`;
-    this.logger.log(`Connecting to Kline ${wsUrl}`);
+    this.logger.log(`Initializing Kline WebSocket: ${wsUrl}`);
 
     this.klineWs = new WebSocket(wsUrl);
 
@@ -103,7 +146,7 @@ export class BinanceAdapter extends BaseExchangeAdapter {
       this.isKlineConnected = true;
       this.resetKlineReconnectAttempts();
       this.clearKlineReconnectTimer();
-      this.logger.log(`Kline connected to ${standardSymbol} ${interval}`);
+      this.logger.log(`Kline WebSocket connected for ${standardSymbol}`);
     });
 
     this.klineWs.on('message', (data: WebSocket.Data) => {
@@ -111,6 +154,8 @@ export class BinanceAdapter extends BaseExchangeAdapter {
         const raw = JSON.parse(data.toString());
         // Binance kline data is nested under 'k' property
         if (raw.k) {
+          // Determine interval from the response
+          const interval = this.reverseMapInterval(raw.k.i);
           const normalized = this.normalizeKlineData(raw.k, standardSymbol, interval);
           if (this.onKlineUpdate) {
             this.onKlineUpdate(normalized);
@@ -134,7 +179,92 @@ export class BinanceAdapter extends BaseExchangeAdapter {
     this.klineWs.on('close', () => {
       this.isKlineConnected = false;
       this.logger.warn(`Kline WebSocket closed for ${standardSymbol}`);
-      this.scheduleKlineReconnect(nativeSymbol, standardSymbol, interval);
+      // Reconnect with all subscribed intervals
+      this.reconnectKlineWithAllIntervals(nativeSymbol, standardSymbol);
+    });
+  }
+
+  /**
+   * Reconnect K-line WebSocket with all subscribed intervals
+   * Binance doesn't support dynamic subscription, so we need to reconnect with combined stream
+   */
+  private reconnectKlineWithAllIntervals(nativeSymbol: string, standardSymbol: string): void {
+    // Get all subscribed intervals
+    const intervals: string[] = [];
+    for (const key of this.klineSubscriptions) {
+      const [symbol, interval] = key.split(':');
+      if (symbol === nativeSymbol) {
+        intervals.push(interval);
+      }
+    }
+
+    if (intervals.length === 0) {
+      return;
+    }
+
+    // Build combined stream URL
+    const streams = intervals.map(interval => {
+      const mappedInterval = this.mapInterval(interval);
+      return `${nativeSymbol}@kline_${mappedInterval}`;
+    }).join('/');
+
+    const wsUrl = `${this.config.wsEndpoint}/stream?streams=${streams}`;
+    this.logger.log(`Reconnecting Kline WebSocket with ${intervals.length} streams: ${wsUrl}`);
+
+    // Close existing connection
+    if (this.klineWs) {
+      this.klineWs.removeAllListeners();
+      this.klineWs.close();
+    }
+
+    // Create new connection
+    this.isKlineConnected = false;
+    this.klineWs = new WebSocket(wsUrl);
+
+    this.klineWs.on('open', () => {
+      this.isKlineConnected = true;
+      this.resetKlineReconnectAttempts();
+      this.clearKlineReconnectTimer();
+      this.logger.log(`Kline WebSocket reconnected for ${standardSymbol} with ${intervals.length} intervals`);
+    });
+
+    this.klineWs.on('message', (data: WebSocket.Data) => {
+      try {
+        const raw = JSON.parse(data.toString());
+        // Combined stream format: { stream: "btcusdt@kline_1m", data: {...} }
+        if (raw.data && raw.data.k) {
+          const interval = this.reverseMapInterval(raw.data.k.i);
+          const normalized = this.normalizeKlineData(raw.data.k, standardSymbol, interval);
+          if (this.onKlineUpdate) {
+            this.onKlineUpdate(normalized);
+          }
+        } else if (raw.k) {
+          // Single stream format
+          const interval = this.reverseMapInterval(raw.k.i);
+          const normalized = this.normalizeKlineData(raw.k, standardSymbol, interval);
+          if (this.onKlineUpdate) {
+            this.onKlineUpdate(normalized);
+          }
+        }
+      } catch (error) {
+        this.logger.error(`Failed to parse kline message: ${error.message}`);
+        if (this.onError) {
+          this.onError(error);
+        }
+      }
+    });
+
+    this.klineWs.on('error', (error: Error) => {
+      this.logger.error(`Kline WebSocket error for ${standardSymbol}: ${error.message}`);
+      if (this.onError) {
+        this.onError(error);
+      }
+    });
+
+    this.klineWs.on('close', () => {
+      this.isKlineConnected = false;
+      this.logger.warn(`Kline WebSocket closed for ${standardSymbol}`);
+      this.scheduleKlineReconnect(nativeSymbol, standardSymbol, 'all');
     });
   }
 
@@ -146,10 +276,10 @@ export class BinanceAdapter extends BaseExchangeAdapter {
   ): Promise<KlineData[]> {
     const mappedInterval = this.mapInterval(interval);
     const url = 'https://api.binance.com/api/v3/klines';
-    
+
     try {
       this.logger.log(`Fetching ${limit} ${interval} klines for ${standardSymbol} from Binance REST API`);
-      
+
       const response = await axios.get(url, {
         params: {
           symbol: nativeSymbol.toUpperCase(),
@@ -268,16 +398,17 @@ export class BinanceAdapter extends BaseExchangeAdapter {
 
   /**
    * Map standard interval format to Binance-specific format
+   * Now uses configuration from ExchangeConfig
    */
   private mapInterval(interval: string): string {
-    const intervalMap: Record<string, string> = {
-      '1s': '1s',
-      '1m': '1m',
-      '15m': '15m',
-      '1h': '1h',
-      '1d': '1d',
-      '1w': '1w',
-    };
-    return intervalMap[interval] || '1m';
+    return this.config.intervalMapping.toExchange[interval] || '1m';
+  }
+
+  /**
+   * Map Binance interval format back to standard format
+   * Now uses configuration from ExchangeConfig
+   */
+  private reverseMapInterval(binanceInterval: string): string {
+    return this.config.intervalMapping.fromExchange[binanceInterval] || '1m';
   }
 }

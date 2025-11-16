@@ -14,6 +14,11 @@ export interface ExchangeConfig {
   rateLimit?: {
     requestsPerSecond: number;
   };
+  // K-line interval mapping configuration
+  intervalMapping: {
+    toExchange: Record<string, string>;   // Standard format → Exchange-specific format
+    fromExchange: Record<string, string>; // Exchange-specific format → Standard format
+  };
 }
 
 /**

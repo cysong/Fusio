@@ -230,8 +230,55 @@ export class OkxAdapter extends BaseExchangeAdapter {
   }
 
   async connectKline(nativeSymbol: string, standardSymbol: string, interval: string): Promise<void> {
+    // Check if already subscribed
+    if (this.isKlineIntervalSubscribed(nativeSymbol, interval)) {
+      this.logger.log(`Already subscribed to ${interval} for ${standardSymbol}`);
+      return;
+    }
+
+    // Store symbol for reconnection
+    if (!this.klineNativeSymbol) {
+      this.klineNativeSymbol = nativeSymbol;
+      this.klineStandardSymbol = standardSymbol;
+    }
+
+    // If WebSocket is not created, initialize it
+    if (!this.klineWs || !this.isKlineConnected) {
+      await this.initKlineWebSocket(nativeSymbol, standardSymbol);
+    }
+
+    // Wait for connection
+    await this.waitForKlineConnection();
+
+    // Subscribe to this interval
+    const mappedInterval = this.mapInterval(interval);
+    const subscribeMsg = {
+      op: 'subscribe',
+      args: [
+        {
+          channel: `candle${mappedInterval}`,
+          instId: nativeSymbol,
+        },
+      ],
+    };
+
+    try {
+      this.klineWs.send(JSON.stringify(subscribeMsg));
+      this.markKlineIntervalSubscribed(nativeSymbol, interval);
+      this.logger.log(`✅ Subscribed to candle${mappedInterval} for ${nativeSymbol}`);
+    } catch (error) {
+      this.logger.error(`Failed to subscribe ${interval}: ${error.message}`);
+      throw error;
+    }
+  }
+
+  private async initKlineWebSocket(nativeSymbol: string, standardSymbol: string): Promise<void> {
+    if (this.klineWs && this.isKlineConnected) {
+      return;
+    }
+
     const wsUrl = this.getWebSocketUrl(nativeSymbol);
-    this.logger.log(`Connecting to Kline ${wsUrl}`);
+    this.logger.log(`Initializing Kline WebSocket: ${wsUrl}`);
 
     this.klineWs = new WebSocket(wsUrl);
 
@@ -239,21 +286,7 @@ export class OkxAdapter extends BaseExchangeAdapter {
       this.isKlineConnected = true;
       this.resetKlineReconnectAttempts();
       this.clearKlineReconnectTimer();
-      this.logger.log(`Kline connected to ${standardSymbol} ${interval}`);
-
-      // Subscribe to candle channel
-      const mappedInterval = this.mapInterval(interval);
-      const subscribeMsg = {
-        op: 'subscribe',
-        args: [
-          {
-            channel: `candle${mappedInterval}`,
-            instId: nativeSymbol,
-          },
-        ],
-      };
-      this.klineWs.send(JSON.stringify(subscribeMsg));
-      this.logger.log(`Subscribed to candle${mappedInterval} channel for ${nativeSymbol}`);
+      this.logger.log(`Kline WebSocket connected for ${standardSymbol}`);
 
       // Start ping interval
       this.startKlinePingInterval();
@@ -311,7 +344,8 @@ export class OkxAdapter extends BaseExchangeAdapter {
       this.isKlineConnected = false;
       this.stopKlinePingInterval();
       this.logger.warn(`Kline WebSocket closed for ${standardSymbol}`);
-      this.scheduleKlineReconnect(nativeSymbol, standardSymbol, interval);
+      // Reconnect with all subscribed intervals (using 'all' as placeholder)
+      this.scheduleKlineReconnect(nativeSymbol, standardSymbol, 'all');
     });
   }
 
@@ -323,10 +357,10 @@ export class OkxAdapter extends BaseExchangeAdapter {
   ): Promise<KlineData[]> {
     const mappedInterval = this.mapInterval(interval);
     const url = 'https://www.okx.com/api/v5/market/candles';
-    
+
     try {
       this.logger.log(`Fetching ${limit} ${interval} klines for ${standardSymbol} from OKX REST API`);
-      
+
       const response = await axios.get(url, {
         params: {
           instId: nativeSymbol,
@@ -449,7 +483,7 @@ export class OkxAdapter extends BaseExchangeAdapter {
     }
 
     const kline = klineArray[0]; // Usually only one kline per update
-    
+
     return {
       exchange: this.config.id,
       symbol: standardSymbol,
@@ -518,31 +552,17 @@ export class OkxAdapter extends BaseExchangeAdapter {
 
   /**
    * Map standard interval format to OKX-specific format
+   * Now uses configuration from ExchangeConfig
    */
   private mapInterval(interval: string): string {
-    const intervalMap: Record<string, string> = {
-      '1s': '1s',
-      '1m': '1m',
-      '15m': '15m',
-      '1h': '1H',
-      '1d': '1D',
-      '1w': '1W',
-    };
-    return intervalMap[interval] || '1m';
+    return this.config.intervalMapping.toExchange[interval] || '1m';
   }
 
   /**
-   * Reverse map OKX interval format to standard format
+   * Map OKX interval format back to standard format
+   * Now uses configuration from ExchangeConfig
    */
   private reverseMapInterval(okxInterval: string): string {
-    const reverseMap: Record<string, string> = {
-      '1s': '1s',
-      '1m': '1m',
-      '15m': '15m',
-      '1H': '1h',
-      '1D': '1d',
-      '1W': '1w',
-    };
-    return reverseMap[okxInterval] || '1m';
+    return this.config.intervalMapping.fromExchange[okxInterval] || '1m';
   }
 }

@@ -13,6 +13,13 @@ export abstract class BaseExchangeAdapter {
   protected ws: any = null;
   protected orderbookWs: any = null;
   protected klineWs: any = null;
+
+  // K-line subscription management
+  protected klineSubscriptions: Set<string> = new Set();
+  protected klineConnectionPromise: Promise<void> | null = null;
+  protected klineNativeSymbol: string | null = null;
+  protected klineStandardSymbol: string | null = null;
+
   protected reconnectAttempts = 0;
   protected reconnectTimer: NodeJS.Timeout | null = null;
   protected orderbookReconnectAttempts = 0;
@@ -217,6 +224,53 @@ export abstract class BaseExchangeAdapter {
    */
   protected resetKlineReconnectAttempts(): void {
     this.klineReconnectAttempts = 0;
+  }
+
+  /**
+   * Wait for K-line WebSocket connection to be established
+   */
+  protected async waitForKlineConnection(timeout = 10000): Promise<void> {
+    if (this.isKlineConnected) {
+      return Promise.resolve();
+    }
+
+    if (this.klineConnectionPromise) {
+      return this.klineConnectionPromise;
+    }
+
+    this.klineConnectionPromise = new Promise((resolve, reject) => {
+      const timeoutId = setTimeout(() => {
+        this.klineConnectionPromise = null;
+        reject(new Error('K-line WebSocket connection timeout'));
+      }, timeout);
+
+      const checkInterval = setInterval(() => {
+        if (this.isKlineConnected) {
+          clearTimeout(timeoutId);
+          clearInterval(checkInterval);
+          this.klineConnectionPromise = null;
+          resolve();
+        }
+      }, 100);
+    });
+
+    return this.klineConnectionPromise;
+  }
+
+  /**
+   * Check if a specific interval is already subscribed
+   */
+  protected isKlineIntervalSubscribed(nativeSymbol: string, interval: string): boolean {
+    const key = `${nativeSymbol}:${interval}`;
+    return this.klineSubscriptions.has(key);
+  }
+
+  /**
+   * Mark an interval as subscribed
+   */
+  protected markKlineIntervalSubscribed(nativeSymbol: string, interval: string): void {
+    const key = `${nativeSymbol}:${interval}`;
+    this.klineSubscriptions.add(key);
   }
 
   /**

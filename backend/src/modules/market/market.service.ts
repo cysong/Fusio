@@ -9,6 +9,7 @@ import { BaseExchangeAdapter } from './adapters/base-exchange.adapter';
 import { ExchangeAdapterFactory } from './factories/exchange-adapter.factory';
 import {
   EXCHANGES_CONFIG,
+  SUPPORTED_INTERVALS,
   getEnabledExchanges,
   getEnabledTradingPairs,
 } from '../../config/exchanges.config';
@@ -70,11 +71,11 @@ export class MarketService implements OnModuleInit, OnModuleDestroy {
   /**
    * Start a single data stream
    */
-  private startStream(
+  private async startStream(
     exchangeId: string,
     nativeSymbol: string,
     standardSymbol: string,
-  ): void {
+  ): Promise<void> {
     const key = `${exchangeId}:${standardSymbol}`;
 
     if (this.adapters.has(key)) {
@@ -103,11 +104,16 @@ export class MarketService implements OnModuleInit, OnModuleDestroy {
       // Connect orderbook stream
       adapter.connectOrderBook(nativeSymbol, standardSymbol);
 
-      // Connect kline stream (temporarily only subscribe to 1m to avoid WebSocket conflicts)
-      // TODO: Refactor to use single WebSocket with multiple subscriptions
-      adapter.connectKline(nativeSymbol, standardSymbol, '1m');
-      this.logger.warn(`⚠️ Currently only subscribing to 1m interval due to WebSocket architecture limitations`);
-      this.logger.warn(`⚠️ See docs/KLINE-MULTI-INTERVAL-ARCHITECTURE-ISSUE.md for details`);
+      // Connect kline streams for all supported intervals
+      // Use global configuration for consistency
+      for (const interval of SUPPORTED_INTERVALS) {
+        try {
+          await adapter.connectKline(nativeSymbol, standardSymbol, interval);
+          this.logger.log(`✅ Subscribed to ${interval} kline for ${standardSymbol} on ${exchangeId}`);
+        } catch (error) {
+          this.logger.warn(`Failed to subscribe ${interval} kline for ${standardSymbol}: ${error.message}`);
+        }
+      }
 
       this.adapters.set(key, adapter);
 

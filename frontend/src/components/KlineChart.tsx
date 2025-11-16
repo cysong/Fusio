@@ -5,10 +5,9 @@ import { useKlineStore } from "@/stores/klineStore";
 import { useTradingStore } from "@/stores/tradingStore";
 import "./KlineChart.css";
 
-// TODO: Currently only 1m interval is supported due to backend WebSocket architecture limitations
-// See: backend/docs/KLINE-MULTI-INTERVAL-ARCHITECTURE-ISSUE.md
-const INTERVALS = ["1m"]; // Temporarily limited to 1m
-// const INTERVALS = ["1s", "1m", "15m", "1h", "1d", "1w"]; // Full list (to be enabled after refactor)
+// Supported intervals (全时间维度覆盖：分钟→月)
+// 所有三大交易所(Binance/Bybit/OKX)都支持这些周期
+const INTERVALS = ["1m", "15m", "1h", "4h", "1d", "1w", "1M"];
 
 export default function KlineChart() {
   const chartContainerRef = useRef<HTMLDivElement>(null);

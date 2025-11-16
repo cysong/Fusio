@@ -2,6 +2,7 @@ import { Controller, Get, Param, Query } from '@nestjs/common';
 import { MarketService } from './market.service';
 import { TickerData } from './interfaces/ticker.interface';
 import { KlineData } from './interfaces/kline.interface';
+import { SUPPORTED_INTERVALS } from '../../config/exchanges.config';
 
 @Controller('market')
 export class MarketController {
@@ -82,9 +83,9 @@ export class MarketController {
       throw new Error('Invalid limit parameter. Must be between 1 and 1000.');
     }
 
-    const validIntervals = ['1s', '1m', '15m', '1h', '1d', '1w'];
-    if (!validIntervals.includes(interval)) {
-      throw new Error(`Invalid interval. Must be one of: ${validIntervals.join(', ')}`);
+    // Validate interval using global configuration
+    if (!SUPPORTED_INTERVALS.includes(interval as any)) {
+      throw new Error(`Invalid interval. Must be one of: ${SUPPORTED_INTERVALS.join(', ')}`);
     }
 
     return await this.marketService.fetchKlineHistory(

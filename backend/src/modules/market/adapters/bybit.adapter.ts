@@ -184,8 +184,50 @@ export class BybitAdapter extends BaseExchangeAdapter {
   }
 
   async connectKline(nativeSymbol: string, standardSymbol: string, interval: string): Promise<void> {
+    // Check if already subscribed
+    if (this.isKlineIntervalSubscribed(nativeSymbol, interval)) {
+      this.logger.log(`Already subscribed to ${interval} for ${standardSymbol}`);
+      return;
+    }
+
+    // Store symbol for reconnection
+    if (!this.klineNativeSymbol) {
+      this.klineNativeSymbol = nativeSymbol;
+      this.klineStandardSymbol = standardSymbol;
+    }
+
+    // If WebSocket is not created, initialize it
+    if (!this.klineWs || !this.isKlineConnected) {
+      await this.initKlineWebSocket(nativeSymbol, standardSymbol);
+    }
+
+    // Wait for connection
+    await this.waitForKlineConnection();
+
+    // Subscribe to this interval
+    const mappedInterval = this.mapInterval(interval);
+    const subscribeMsg = {
+      op: 'subscribe',
+      args: [`kline.${mappedInterval}.${nativeSymbol}`],
+    };
+
+    try {
+      this.klineWs.send(JSON.stringify(subscribeMsg));
+      this.markKlineIntervalSubscribed(nativeSymbol, interval);
+      this.logger.log(`✅ Subscribed to kline.${mappedInterval}.${nativeSymbol}`);
+    } catch (error) {
+      this.logger.error(`Failed to subscribe ${interval}: ${error.message}`);
+      throw error;
+    }
+  }
+
+  private async initKlineWebSocket(nativeSymbol: string, standardSymbol: string): Promise<void> {
+    if (this.klineWs && this.isKlineConnected) {
+      return;
+    }
+
     const wsUrl = this.getWebSocketUrl(nativeSymbol);
-    this.logger.log(`Connecting to Kline ${wsUrl}`);
+    this.logger.log(`Initializing Kline WebSocket: ${wsUrl}`);
 
     this.klineWs = new WebSocket(wsUrl);
 
@@ -193,16 +235,7 @@ export class BybitAdapter extends BaseExchangeAdapter {
       this.isKlineConnected = true;
       this.resetKlineReconnectAttempts();
       this.clearKlineReconnectTimer();
-      this.logger.log(`Kline connected to ${standardSymbol} ${interval}`);
-
-      // Subscribe to kline
-      const mappedInterval = this.mapInterval(interval);
-      const subscribeMsg = {
-        op: 'subscribe',
-        args: [`kline.${mappedInterval}.${nativeSymbol}`],
-      };
-      this.klineWs.send(JSON.stringify(subscribeMsg));
-      this.logger.log(`Subscribed to kline.${mappedInterval}.${nativeSymbol}`);
+      this.logger.log(`Kline WebSocket connected for ${standardSymbol}`);
 
       // Start ping interval
       this.startKlinePingInterval();
@@ -252,7 +285,8 @@ export class BybitAdapter extends BaseExchangeAdapter {
       this.isKlineConnected = false;
       this.stopKlinePingInterval();
       this.logger.warn(`Kline WebSocket closed for ${standardSymbol}`);
-      this.scheduleKlineReconnect(nativeSymbol, standardSymbol, interval);
+      // Reconnect with all subscribed intervals (using 'all' as placeholder)
+      this.scheduleKlineReconnect(nativeSymbol, standardSymbol, 'all');
     });
   }
 
@@ -264,10 +298,10 @@ export class BybitAdapter extends BaseExchangeAdapter {
   ): Promise<KlineData[]> {
     const mappedInterval = this.mapInterval(interval);
     const url = 'https://api.bybit.com/v5/market/kline';
-    
+
     try {
       this.logger.log(`Fetching ${limit} ${interval} klines for ${standardSymbol} from Bybit REST API`);
-      
+
       const response = await axios.get(url, {
         params: {
           category: 'spot',
@@ -388,7 +422,7 @@ export class BybitAdapter extends BaseExchangeAdapter {
     }
 
     const kline = klineArray[0]; // Usually only one kline per update
-    
+
     return {
       exchange: this.config.id,
       symbol: standardSymbol,
@@ -457,30 +491,17 @@ export class BybitAdapter extends BaseExchangeAdapter {
 
   /**
    * Map standard interval format to Bybit-specific format
+   * Now uses configuration from ExchangeConfig
    */
   private mapInterval(interval: string): string {
-    const intervalMap: Record<string, string> = {
-      '1s': '1',      // Bybit uses just the number
-      '1m': '1',
-      '15m': '15',
-      '1h': '60',
-      '1d': 'D',
-      '1w': 'W',
-    };
-    return intervalMap[interval] || '1';
+    return this.config.intervalMapping.toExchange[interval] || '1';
   }
 
   /**
-   * Reverse map Bybit interval format to standard format
+   * Map Bybit interval format back to standard format
+   * Now uses configuration from ExchangeConfig
    */
   private reverseMapInterval(bybitInterval: string): string {
-    const reverseMap: Record<string, string> = {
-      '1': '1m',
-      '15': '15m',
-      '60': '1h',
-      'D': '1d',
-      'W': '1w',
-    };
-    return reverseMap[bybitInterval] || '1m';
+    return this.config.intervalMapping.fromExchange[bybitInterval] || '1m';
   }
 }
