@@ -41,6 +41,8 @@ export default function KlineChart() {
     cached?.data && Array.isArray(cached.data) ? cached.data : [];
   const isLoading = loading[key];
   const isStale = cached?.stale;
+  // Detect browser local timezone for display (data stays as UTC seconds)
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const lastDataLengthRef = useRef<number>(0);
   const lastCandleTimestamp =
     currentKlines.length > 0
@@ -49,6 +51,35 @@ export default function KlineChart() {
 
   useEffect(() => {
     if (!chartContainerRef.current) return;
+
+    const formatAxisTime = (unixSeconds: number) => {
+      const isDailyOrAbove = ["1d", "1w", "1M"].includes(interval);
+      const showSeconds = interval === "1s";
+      const formatter = new Intl.DateTimeFormat(undefined, {
+        timeZone,
+        hour12: false,
+        month: isDailyOrAbove ? "2-digit" : undefined,
+        day: isDailyOrAbove ? "2-digit" : undefined,
+        hour: isDailyOrAbove ? undefined : "2-digit",
+        minute: isDailyOrAbove ? undefined : "2-digit",
+        second: showSeconds ? "2-digit" : undefined,
+      });
+      return formatter.format(new Date(unixSeconds * 1000));
+    };
+
+    const formatTooltipTime = (unixSeconds: number) => {
+      const formatter = new Intl.DateTimeFormat(undefined, {
+        timeZone,
+        hour12: false,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      });
+      return formatter.format(new Date(unixSeconds * 1000));
+    };
 
     const chart = createChart(chartContainerRef.current, {
       layout: {
@@ -91,8 +122,8 @@ export default function KlineChart() {
       timeScale: {
         timeVisible: true,
         secondsVisible: interval === "1s",
-      rightOffset: 10,
-      barSpacing: 6,
+        rightOffset: 10,
+        barSpacing: 6,
         minBarSpacing: 2,
         fixLeftEdge: false,
         fixRightEdge: false,
@@ -100,16 +131,11 @@ export default function KlineChart() {
         allowBoldLabels: true,
         borderVisible: true,
         borderColor: "#2B3139",
-        tickMarkFormatter: (time: number) => {
-          const date = new Date(time * 1000);
-          const hours = date.getHours().toString().padStart(2, "0");
-          const minutes = date.getMinutes().toString().padStart(2, "0");
-          const seconds = date.getSeconds().toString().padStart(2, "0");
-          if (interval === "1s") {
-            return `${hours}:${minutes}:${seconds}`;
-          }
-          return `${hours}:${minutes}`;
-        },
+        tickMarkFormatter: (time: number) => formatAxisTime(time),
+      },
+      localization: {
+        timeFormatter: (time: any) =>
+          typeof time === "number" ? formatAxisTime(time) : "",
       },
     });
 
@@ -181,9 +207,7 @@ export default function KlineChart() {
       const data = param.seriesData.get(candlestickSeries);
       if (data && "open" in data) {
         const candle = data as CandlestickData<Time>;
-        const timeStr = new Date(
-          (candle.time as number) * 1000
-        ).toLocaleString();
+        const timeStr = formatTooltipTime(candle.time as number);
         tooltip.innerHTML = `
           <div style="margin-bottom: 4px; font-weight: 600;">${timeStr}</div>
           <div>O: <span style="color: #EAECEF;">${candle.open.toFixed(
@@ -266,7 +290,10 @@ export default function KlineChart() {
       lastDataLengthRef.current = 0;
       lastFetchedAtRef.current = undefined;
     }
-    prevPairRef.current = { exchange: selectedExchange, symbol: selectedSymbol };
+    prevPairRef.current = {
+      exchange: selectedExchange,
+      symbol: selectedSymbol,
+    };
   }, [selectedExchange, selectedSymbol, clearKlines]);
 
   useEffect(() => {
@@ -285,11 +312,9 @@ export default function KlineChart() {
     }
 
     try {
-      const convertToLocalTime = (utcTimestamp: number): number => {
-        const date = new Date(utcTimestamp * 1000);
-        const offsetMinutes = date.getTimezoneOffset();
-        const localTime = date.getTime() - offsetMinutes * 60 * 1000;
-        return Math.floor(localTime / 1000);
+      const convertToChartTime = (utcTimestamp: number): number => {
+        // Keep UTC seconds; formatting handles local tz
+        return Math.floor(utcTimestamp);
       };
 
       const validateKlineData = (k: any): boolean => {
@@ -309,7 +334,7 @@ export default function KlineChart() {
       const chartData: CandlestickData<Time>[] = currentKlines
         .filter(validateKlineData)
         .map((k) => ({
-          time: convertToLocalTime(Math.floor(k.timestamp / 1000)) as Time,
+          time: convertToChartTime(Math.floor(k.timestamp / 1000)) as Time,
           open: k.open,
           high: k.high,
           low: k.low,
@@ -319,7 +344,7 @@ export default function KlineChart() {
       const volumeData: HistogramData<Time>[] = currentKlines
         .filter(validateKlineData)
         .map((k) => ({
-          time: convertToLocalTime(Math.floor(k.timestamp / 1000)) as Time,
+          time: convertToChartTime(Math.floor(k.timestamp / 1000)) as Time,
           value: k.volume,
           color:
             k.close >= k.open
@@ -372,7 +397,12 @@ export default function KlineChart() {
     } catch (error) {
       console.error("[KlineChart] Failed to update chart:", error);
     }
-  }, [cached?.fetchedAt, cached?.lastUpdatedAt, lastCandleTimestamp, currentKlines.length]);
+  }, [
+    cached?.fetchedAt,
+    cached?.lastUpdatedAt,
+    lastCandleTimestamp,
+    currentKlines.length,
+  ]);
 
   // Handle interval change
   const handleIntervalChange = (newInterval: string) => {
@@ -416,7 +446,11 @@ export default function KlineChart() {
         {!isLoading && isStale && (
           <div className="kline-loading">
             <p>Load failed. Data may be stale.</p>
-            <button onClick={() => loadHistory(selectedExchange, selectedSymbol, interval)}>
+            <button
+              onClick={() =>
+                loadHistory(selectedExchange, selectedSymbol, interval)
+              }
+            >
               Retry
             </button>
           </div>
@@ -435,5 +469,3 @@ export default function KlineChart() {
     </div>
   );
 }
-
-
