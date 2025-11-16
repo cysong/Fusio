@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import axios from 'axios';
+import { getKlineCacheTTL } from '@/config/cache.config';
 
 export interface KlineData {
   timestamp: number;
@@ -14,14 +15,14 @@ export interface KlineData {
   interval?: string;
 }
 
+interface CachedKlineData {
+  data: KlineData[];
+  timestamp: number;
+}
+
 interface KlineState {
-  // Kline data cache: "exchange:symbol:interval" -> KlineData[]
-  klines: Record<string, KlineData[]>;
-
-  // Loading state
+  klines: Record<string, CachedKlineData>;
   loading: Record<string, boolean>;
-
-  // Actions
   loadHistory: (exchange: string, symbol: string, interval: string) => Promise<void>;
   updateKline: (data: KlineData & { exchange: string; symbol: string; interval: string }) => void;
   clearKlines: (exchange: string, symbol: string) => void;
@@ -31,25 +32,34 @@ export const useKlineStore = create<KlineState>((set, get) => ({
   klines: {},
   loading: {},
 
-  /**
-   * Load historical kline data from REST API
-   */
   loadHistory: async (exchange: string, symbol: string, interval: string) => {
     const key = `${exchange}:${symbol}:${interval}`;
+    const now = Date.now();
+    const cached = get().klines[key];
 
-    // Check if already loaded
-    if (get().klines[key]?.length > 0) {
-      console.log('[KlineStore] Cache hit:', key);
-      return;
+    if (cached?.data?.length > 0 && cached.timestamp) {
+      const age = now - cached.timestamp;
+      const ttl = getKlineCacheTTL(interval);
+
+      if (age < ttl) {
+        console.log(
+          `[KlineStore] Cache hit (age: ${Math.round(age / 1000)}s, ttl: ${ttl / 1000}s):`,
+          key
+        );
+        return;
+      } else {
+        console.log(
+          `[KlineStore] Cache expired (age: ${Math.round(age / 1000)}s, ttl: ${ttl / 1000}s), reloading:`,
+          key
+        );
+      }
     }
 
-    // Check if already loading
     if (get().loading[key]) {
       console.log('[KlineStore] Already loading:', key);
       return;
     }
 
-    // Set loading state
     set((state) => ({
       loading: { ...state.loading, [key]: true },
     }));
@@ -69,12 +79,17 @@ export const useKlineStore = create<KlineState>((set, get) => ({
       });
 
       if (response.data.success && response.data.data) {
-        // Ensure data is an array
         const klineData = Array.isArray(response.data.data) ? response.data.data : [];
         console.log(`[KlineStore] Loaded ${klineData.length} klines for ${key}`);
 
         set((state) => ({
-          klines: { ...state.klines, [key]: klineData },
+          klines: {
+            ...state.klines,
+            [key]: {
+              data: klineData,
+              timestamp: Date.now(),
+            },
+          },
           loading: { ...state.loading, [key]: false },
         }));
       } else {
@@ -87,58 +102,53 @@ export const useKlineStore = create<KlineState>((set, get) => ({
         console.error('[KlineStore] Response status:', error.response.status);
       }
       set((state) => ({
-        klines: { ...state.klines, [key]: [] }, // Set empty array on error
+        klines: {
+          ...state.klines,
+          [key]: {
+            data: [],
+            timestamp: Date.now(),
+          },
+        },
         loading: { ...state.loading, [key]: false },
       }));
-      // Don't throw - allow component to continue rendering
     }
   },
 
-  /**
-   * Update kline data from WebSocket
-   * Core logic: incremental updates based on isClosed field
-   */
   updateKline: (data) => {
     const key = `${data.exchange}:${data.symbol}:${data.interval}`;
-    const existing = get().klines[key];
+    const cached = get().klines[key];
 
-    // If no history loaded or not an array, silently ignore update
-    // This is normal when receiving data for exchanges/intervals not currently displayed
-    if (!existing || !Array.isArray(existing) || existing.length === 0) {
+    if (!cached?.data || !Array.isArray(cached.data) || cached.data.length === 0) {
       return;
     }
 
-    const updated = [...existing];
+    const updated = [...cached.data];
     const lastCandle = updated[updated.length - 1];
 
-    // Determine if this is a new candle or an update
     if (data.timestamp > lastCandle.timestamp) {
-      // Case 1: New candle (timestamp is greater)
       console.log('[KlineStore] New candle:', new Date(data.timestamp).toLocaleTimeString());
       updated.push(data);
-
-      // Maintain fixed window of 500 candles
       if (updated.length > 500) {
-        updated.shift(); // Remove oldest
+        updated.shift();
       }
     } else if (data.timestamp === lastCandle.timestamp) {
-      // Case 2: Update current candle (timestamp matches)
       updated[updated.length - 1] = data;
     } else {
-      // Case 3: Historical data (shouldn't happen in normal operation)
       console.warn('[KlineStore] Received old candle, ignoring');
       return;
     }
 
-    // Update store
     set((state) => ({
-      klines: { ...state.klines, [key]: updated },
+      klines: {
+        ...state.klines,
+        [key]: {
+          data: updated,
+          timestamp: Date.now(),
+        },
+      },
     }));
   },
 
-  /**
-   * Clear klines for a specific exchange and symbol (all intervals)
-   */
   clearKlines: (exchange: string, symbol: string) => {
     const prefix = `${exchange}:${symbol}:`;
 

@@ -20,10 +20,16 @@ export default function KlineChart() {
   const { klines, loading, loadHistory } = useKlineStore();
 
   const key = `${selectedExchange}:${selectedSymbol}:${interval}`;
-  const currentKlines = Array.isArray(klines[key]) ? klines[key] : [];
+  const cached = klines[key];
+  const currentKlines =
+    cached?.data && Array.isArray(cached.data) ? cached.data : [];
   const isLoading = loading[key];
+  const lastDataLengthRef = useRef<number>(0);
+  const lastCandleTimestamp =
+    currentKlines.length > 0
+      ? currentKlines[currentKlines.length - 1].timestamp
+      : 0;
 
-  // Initialize chart
   useEffect(() => {
     if (!chartContainerRef.current) return;
 
@@ -44,7 +50,6 @@ export default function KlineChart() {
       },
     });
 
-    // Create candlestick series (v5 API - use addSeries with CandlestickSeries)
     const candlestickSeries = chart.addSeries(CandlestickSeries, {
       upColor: "#0ECB81",
       downColor: "#F6465D",
@@ -56,8 +61,8 @@ export default function KlineChart() {
 
     chartRef.current = chart;
     seriesRef.current = candlestickSeries;
+    lastDataLengthRef.current = 0;
 
-    // Handle resize
     const handleResize = () => {
       if (chartContainerRef.current && chartRef.current) {
         chartRef.current.applyOptions({
@@ -74,39 +79,57 @@ export default function KlineChart() {
     };
   }, [interval]);
 
-  // Load historical data when exchange/symbol/interval changes
   useEffect(() => {
     loadHistory(selectedExchange, selectedSymbol, interval);
+    lastDataLengthRef.current = 0;
   }, [selectedExchange, selectedSymbol, interval, loadHistory]);
 
-  // Update chart data when klines change
   useEffect(() => {
-    if (!seriesRef.current || currentKlines.length === 0) return;
+    if (!seriesRef.current || !cached?.data || currentKlines.length === 0)
+      return;
 
     try {
-      // Convert to lightweight-charts format
       const chartData: CandlestickData<Time>[] = currentKlines.map((k) => ({
-        time: Math.floor(k.timestamp / 1000) as Time, // Convert to seconds and cast to Time
+        time: Math.floor(k.timestamp / 1000) as Time,
         open: k.open,
         high: k.high,
         low: k.low,
         close: k.close,
       }));
 
-      // Sort by time to ensure correct order
       chartData.sort((a, b) => (a.time as number) - (b.time as number));
 
-      // Set data
-      seriesRef.current.setData(chartData);
+      const currentLength = chartData.length;
+      const lastLength = lastDataLengthRef.current;
 
-      // Auto-scroll to latest data
+      if (lastLength === 0 || currentLength < lastLength) {
+        seriesRef.current.setData(chartData);
+        console.log(`[KlineChart] Set data: ${currentLength} candles`);
+      } else if (currentLength > lastLength) {
+        const newData = chartData.slice(lastLength);
+        newData.forEach((data) => {
+          seriesRef.current.update(data);
+        });
+        console.log(`[KlineChart] Added ${newData.length} new candles`);
+      } else {
+        const lastData = chartData[chartData.length - 1];
+        seriesRef.current.update(lastData);
+        console.log(
+          `[KlineChart] Updated last candle: ${new Date(
+            (lastData.time as number) * 1000
+          ).toLocaleTimeString()}`
+        );
+      }
+
+      lastDataLengthRef.current = currentLength;
+
       if (chartRef.current) {
         chartRef.current.timeScale().scrollToRealTime();
       }
     } catch (error) {
       console.error("[KlineChart] Failed to update chart:", error);
     }
-  }, [currentKlines]);
+  }, [cached?.timestamp, lastCandleTimestamp, currentKlines.length]);
 
   // Handle interval change
   const handleIntervalChange = (newInterval: string) => {

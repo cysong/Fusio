@@ -17,8 +17,6 @@ export default function TradingPage() {
   const initialSymbol = symbol ? symbol.replace("-", "/") : "BTC/USDT";
   const initialExchange = searchParams.get("exchange") || "binance";
 
-  // 🔧 FIX: Initialize store IMMEDIATELY (before any state/effects run)
-  // This ensures KlineChart reads correct values when it mounts
   const storeRef = useTradingStore.getState();
   if (
     storeRef.selectedSymbol !== initialSymbol ||
