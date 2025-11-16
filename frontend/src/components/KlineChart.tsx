@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+﻿import { useEffect, useRef, useState } from "react";
 import {
   createChart,
   CandlestickSeries,
@@ -14,8 +14,8 @@ import { useKlineStore } from "@/stores/klineStore";
 import { useTradingStore } from "@/stores/tradingStore";
 import "./KlineChart.css";
 
-// Supported intervals (全时间维度覆盖：分钟→月)
-// 所有三大交易所(Binance/Bybit/OKX)都支持这些周期
+// Supported intervals (鍏ㄦ椂闂寸淮搴﹁鐩栵細鍒嗛挓鈫掓湀)
+// 鎵€鏈変笁澶т氦鏄撴墍(Binance/Bybit/OKX)閮芥敮鎸佽繖浜涘懆鏈?
 const INTERVALS = ["1m", "15m", "1h", "4h", "1d", "1w", "1M"];
 
 export default function KlineChart() {
@@ -24,17 +24,23 @@ export default function KlineChart() {
   const seriesRef = useRef<any>(null);
   const volumeSeriesRef = useRef<any>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
+  const lastFetchedAtRef = useRef<number | undefined>(undefined);
+  const prevPairRef = useRef<{ exchange: string; symbol: string }>({
+    exchange: "",
+    symbol: "",
+  });
 
   const [interval, setInterval] = useState("1m");
 
   const { selectedSymbol, selectedExchange } = useTradingStore();
-  const { klines, loading, loadHistory } = useKlineStore();
+  const { klines, loading, loadHistory, clearKlines } = useKlineStore();
 
   const key = `${selectedExchange}:${selectedSymbol}:${interval}`;
   const cached = klines[key];
   const currentKlines =
     cached?.data && Array.isArray(cached.data) ? cached.data : [];
   const isLoading = loading[key];
+  const isStale = cached?.stale;
   const lastDataLengthRef = useRef<number>(0);
   const lastCandleTimestamp =
     currentKlines.length > 0
@@ -85,8 +91,8 @@ export default function KlineChart() {
       timeScale: {
         timeVisible: true,
         secondsVisible: interval === "1s",
-        rightOffset: 10,
-        barSpacing: 6,
+      rightOffset: 10,
+      barSpacing: 6,
         minBarSpacing: 2,
         fixLeftEdge: false,
         fixRightEdge: false,
@@ -242,6 +248,27 @@ export default function KlineChart() {
     };
   }, [interval]);
 
+  // Clear chart and cache when switching trading pair (exchange/symbol)
+  useEffect(() => {
+    const prev = prevPairRef.current;
+    if (
+      prev.exchange &&
+      prev.symbol &&
+      (prev.exchange !== selectedExchange || prev.symbol !== selectedSymbol)
+    ) {
+      clearKlines(prev.exchange, prev.symbol);
+      if (seriesRef.current) {
+        seriesRef.current.setData([]);
+      }
+      if (volumeSeriesRef.current) {
+        volumeSeriesRef.current.setData([]);
+      }
+      lastDataLengthRef.current = 0;
+      lastFetchedAtRef.current = undefined;
+    }
+    prevPairRef.current = { exchange: selectedExchange, symbol: selectedSymbol };
+  }, [selectedExchange, selectedSymbol, clearKlines]);
+
   useEffect(() => {
     loadHistory(selectedExchange, selectedSymbol, interval);
     lastDataLengthRef.current = 0;
@@ -250,6 +277,12 @@ export default function KlineChart() {
   useEffect(() => {
     if (!seriesRef.current || !cached?.data || currentKlines.length === 0)
       return;
+
+    // Reset incremental counters when a fresh history fetch landed
+    if (cached.fetchedAt && cached.fetchedAt !== lastFetchedAtRef.current) {
+      lastDataLengthRef.current = 0;
+      lastFetchedAtRef.current = cached.fetchedAt;
+    }
 
     try {
       const convertToLocalTime = (utcTimestamp: number): number => {
@@ -339,7 +372,7 @@ export default function KlineChart() {
     } catch (error) {
       console.error("[KlineChart] Failed to update chart:", error);
     }
-  }, [cached?.timestamp, lastCandleTimestamp, currentKlines.length]);
+  }, [cached?.fetchedAt, cached?.lastUpdatedAt, lastCandleTimestamp, currentKlines.length]);
 
   // Handle interval change
   const handleIntervalChange = (newInterval: string) => {
@@ -379,6 +412,16 @@ export default function KlineChart() {
           </div>
         )}
 
+        {/* Stale data warning */}
+        {!isLoading && isStale && (
+          <div className="kline-loading">
+            <p>Load failed. Data may be stale.</p>
+            <button onClick={() => loadHistory(selectedExchange, selectedSymbol, interval)}>
+              Retry
+            </button>
+          </div>
+        )}
+
         {/* No data message */}
         {!isLoading && currentKlines.length === 0 && (
           <div className="kline-no-data">
@@ -392,3 +435,5 @@ export default function KlineChart() {
     </div>
   );
 }
+
+

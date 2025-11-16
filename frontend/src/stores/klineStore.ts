@@ -17,7 +17,9 @@ export interface KlineData {
 
 interface CachedKlineData {
   data: KlineData[];
-  timestamp: number;
+  fetchedAt: number; // history fetch completion timestamp
+  lastUpdatedAt: number; // last realtime update timestamp
+  stale?: boolean; // mark cache as stale when refresh fails
 }
 
 interface KlineState {
@@ -28,6 +30,9 @@ interface KlineState {
   clearKlines: (exchange: string, symbol: string) => void;
 }
 
+// Track in-flight refresh for expired cache to avoid duplicate requests
+const refreshInFlight = new Set<string>();
+
 export const useKlineStore = create<KlineState>((set, get) => ({
   klines: {},
   loading: {},
@@ -37,8 +42,8 @@ export const useKlineStore = create<KlineState>((set, get) => ({
     const now = Date.now();
     const cached = get().klines[key];
 
-    if (cached?.data?.length > 0 && cached.timestamp) {
-      const age = now - cached.timestamp;
+    if (cached?.data?.length > 0 && cached.fetchedAt) {
+      const age = now - cached.fetchedAt;
       const ttl = getKlineCacheTTL(interval);
 
       if (age < ttl) {
@@ -47,12 +52,60 @@ export const useKlineStore = create<KlineState>((set, get) => ({
           key
         );
         return;
-      } else {
-        console.log(
-          `[KlineStore] Cache expired (age: ${Math.round(age / 1000)}s, ttl: ${ttl / 1000}s), reloading:`,
-          key
-        );
       }
+
+      console.log(
+        `[KlineStore] Cache expired (age: ${Math.round(age / 1000)}s, ttl: ${ttl / 1000}s), refreshing in background:`,
+        key
+      );
+
+      if (!refreshInFlight.has(key)) {
+        refreshInFlight.add(key);
+        (async () => {
+          try {
+            const [base, quote] = symbol.split('/');
+            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+            const url = `${apiUrl}/api/market/kline/${exchange}/${base}/${quote}`;
+            const response = await axios.get(url, {
+              params: { interval, limit: 500 },
+            });
+
+            if (response.data.success && response.data.data) {
+              const klineData = Array.isArray(response.data.data) ? response.data.data : [];
+              console.log(`[KlineStore] Refreshed ${klineData.length} klines for ${key}`);
+              set((state) => ({
+                klines: {
+                  ...state.klines,
+                  [key]: {
+                    data: klineData,
+                    fetchedAt: Date.now(),
+                    lastUpdatedAt: Date.now(),
+                    stale: false,
+                  },
+                },
+              }));
+            }
+          } catch (error: any) {
+            console.error(`[KlineStore] Background refresh failed for ${key}:`, error?.message || error);
+            set((state) => {
+              const existing = state.klines[key];
+              if (!existing) return state;
+              return {
+                ...state,
+                klines: {
+                  ...state.klines,
+                  [key]: { ...existing, stale: true },
+                },
+              };
+            });
+          } finally {
+            refreshInFlight.delete(key);
+          }
+        })();
+      }
+
+      // Return the existing cache immediately for instant render
+      return;
     }
 
     if (get().loading[key]) {
@@ -87,7 +140,9 @@ export const useKlineStore = create<KlineState>((set, get) => ({
             ...state.klines,
             [key]: {
               data: klineData,
-              timestamp: Date.now(),
+              fetchedAt: Date.now(),
+              lastUpdatedAt: Date.now(),
+              stale: false,
             },
           },
           loading: { ...state.loading, [key]: false },
@@ -106,7 +161,9 @@ export const useKlineStore = create<KlineState>((set, get) => ({
           ...state.klines,
           [key]: {
             data: [],
-            timestamp: Date.now(),
+            fetchedAt: Date.now(),
+            lastUpdatedAt: Date.now(),
+            stale: true,
           },
         },
         loading: { ...state.loading, [key]: false },
@@ -143,7 +200,9 @@ export const useKlineStore = create<KlineState>((set, get) => ({
         ...state.klines,
         [key]: {
           data: updated,
-          timestamp: Date.now(),
+          fetchedAt: cached.fetchedAt,
+          lastUpdatedAt: Date.now(),
+          stale: false,
         },
       },
     }));
@@ -169,4 +228,5 @@ export const useKlineStore = create<KlineState>((set, get) => ({
     console.log('[KlineStore] Cleared klines for:', prefix);
   },
 }));
+
 
