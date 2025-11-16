@@ -89,8 +89,15 @@ export default function KlineChart() {
       return;
 
     try {
+      const convertToLocalTime = (utcTimestamp: number): number => {
+        const date = new Date(utcTimestamp * 1000);
+        const offsetMinutes = date.getTimezoneOffset();
+        const localTime = date.getTime() - offsetMinutes * 60 * 1000;
+        return Math.floor(localTime / 1000);
+      };
+
       const chartData: CandlestickData<Time>[] = currentKlines.map((k) => ({
-        time: Math.floor(k.timestamp / 1000) as Time,
+        time: convertToLocalTime(Math.floor(k.timestamp / 1000)) as Time,
         open: k.open,
         high: k.high,
         low: k.low,
