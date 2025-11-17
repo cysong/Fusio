@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Button, Form, InputNumber, Segmented, Space, Tag, Typography, Divider, ConfigProvider, theme, Slider } from "antd";
+import { Button, Form, InputNumber, Segmented, Space, Tag, Typography, Divider, Slider } from "antd";
 import { CaretUpOutlined, CaretDownOutlined } from "@ant-design/icons";
 import { useOrderStore } from "@/stores/orderStore";
 import { useTradingStore } from "@/stores/tradingStore";
@@ -71,135 +71,126 @@ export default function OrderForm() {
   };
 
   return (
-    <ConfigProvider
-      theme={{
-        algorithm: theme.darkAlgorithm,
-        token: {
-          colorBgContainer: "#0f1114",
-          colorText: "#EAECEF",
-          colorBorder: "#2B3139",
-        },
-      }}
-    >
-      <div className="order-form" style={{ padding: 16, background: "#0f1114", borderRadius: 8 }}>
-        <Space direction="vertical" style={{ width: "100%" }} size="middle">
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <Typography.Title level={4} style={{ margin: 0, color: "#EAECEF" }}>
-              Place Order
-            </Typography.Title>
-            <Tag color="blue">{pairLabel}</Tag>
-          </div>
+    <div className="order-form" style={{ padding: 16, background: "var(--ant-color-bg-container)", borderRadius: 8 }}>
+      <Space direction="vertical" style={{ width: "100%" }} size="middle">
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <Typography.Title level={4} style={{ margin: 0, color: "var(--ant-color-text)" }}>
+            Place Order
+          </Typography.Title>
+          <Tag color="blue">{pairLabel}</Tag>
+        </div>
 
-          <div>
-            <Typography.Text style={{ color: "#EAECEF" }}>Type</Typography.Text>
-            <Segmented
-              block
-              options={TYPE_OPTIONS}
-              value={type}
-              onChange={(val) => setType(val as "limit" | "market")}
-            />
-          </div>
+        <div>
+          <Typography.Text style={{ color: "var(--ant-color-text)" }}>Type</Typography.Text>
+          <Segmented
+            block
+            options={TYPE_OPTIONS}
+            value={type}
+            onChange={(val) => setType(val as "limit" | "market")}
+          />
+        </div>
 
-          {type === "limit" && (
-            <Form layout="vertical">
-              <Form.Item
-                label={
-                  <Space style={{ display: "flex", justifyContent: "space-between", width: "100%" }}>
-                    <Typography.Text style={{ color: "#EAECEF" }}>Price</Typography.Text>
-                    {currentPrice && (
-                      <Button size="small" onClick={() => setPrice(currentPrice)}>
-                        Use last {currentPrice.toFixed(precision.price)}
-                      </Button>
-                    )}
-                  </Space>
-                }
-              >
-                  <Space.Compact block>
-                    <Button icon={<CaretDownOutlined />} onClick={() => setPrice((p) => (p && p > 0.0001 ? Number((p - 0.0001).toFixed(4)) : 0.0001))} />
-                    <InputNumber
-                      style={{ flex: 1 }}
-                      min={0}
-                      step={0.0001}
-                    value={price}
-                    onChange={(v) => setPrice(typeof v === "number" ? v : undefined)}
-                    placeholder="Enter price"
-                  />
-                    <Button icon={<CaretUpOutlined />} onClick={() => setPrice((p) => Number(((p || 0) + 0.0001).toFixed(4)))} />
-                  </Space.Compact>
-                </Form.Item>
-              </Form>
-            )}
-
-          <Form layout="vertical" style={{ marginBottom: 4 }}>
-            <Form.Item label={<Typography.Text style={{ color: "#EAECEF" }}>Quantity</Typography.Text>}>
+        {type === "limit" && (
+          <Form layout="vertical">
+            <Form.Item
+              label={
+                <Space style={{ display: "flex", justifyContent: "space-between", width: "100%" }}>
+                  <Typography.Text style={{ color: "var(--ant-color-text)" }}>Price</Typography.Text>
+                  {currentPrice && (
+                    <Button size="small" onClick={() => setPrice(currentPrice)}>
+                      Use last {currentPrice.toFixed(precision.price)}
+                    </Button>
+                  )}
+                </Space>
+              }
+            >
               <Space.Compact block>
-                <Button icon={<CaretDownOutlined />} onClick={() => setQuantity((q) => (q && q > 0.0001 ? Number((q - 0.0001).toFixed(4)) : 0.0001))} />
+                <Button icon={<CaretDownOutlined />} onClick={() => setPrice((p) => (p && p > 0.0001 ? Number((p - 0.0001).toFixed(4)) : 0.0001))} />
                 <InputNumber
                   style={{ flex: 1 }}
                   min={0}
                   step={0.0001}
+                  controls={false}
+                  value={price}
+                  onChange={(v) => setPrice(typeof v === "number" ? v : undefined)}
+                  placeholder="Enter price"
+                />
+                <Button icon={<CaretUpOutlined />} onClick={() => setPrice((p) => Number(((p || 0) + 0.0001).toFixed(4)))} />
+              </Space.Compact>
+            </Form.Item>
+          </Form>
+        )}
+
+        <Form layout="vertical" style={{ marginBottom: 4 }}>
+          <Form.Item label={<Typography.Text style={{ color: "var(--ant-color-text)" }}>Quantity</Typography.Text>}>
+            <Space.Compact block>
+              <Button icon={<CaretDownOutlined />} onClick={() => setQuantity((q) => (q && q > 0.0001 ? Number((q - 0.0001).toFixed(4)) : 0.0001))} />
+                <InputNumber
+                  style={{ flex: 1 }}
+                  min={0}
+                  step={0.0001}
+                  controls={false}
                   value={quantity}
                   onChange={(v) => setQuantity(typeof v === "number" ? v : undefined)}
                   placeholder="Enter quantity"
                 />
-                <Button icon={<CaretUpOutlined />} onClick={() => setQuantity((q) => Number(((q || 0) + 0.0001).toFixed(4)))} />
-              </Space.Compact>
-            </Form.Item>
-            <div style={{ margin: "4px 4px 8px 4px" }}>
-              <Slider
-                marks={{
-                  0: "0%",
-                  25: "25%",
-                  50: "50%",
-                  75: "75%",
-                  100: "100%",
-                }}
-                step={null}
-                onChange={(val) => {
-                  const pct = Array.isArray(val) ? val[0] : val;
-                  if (!pct && pct !== 0) return;
-                  if (quantity && quantity > 0) {
-                    setQuantity(Number((quantity * (pct / 100)).toFixed(4)));
-                  } else {
-                    setQuantity(Number((pct / 100).toFixed(4)));
-                  }
-                }}
-                defaultValue={0}
-              />
-            </div>
-          </Form>
-
-          {error && <Typography.Text type="danger">{error}</Typography.Text>}
-
-          <div style={{ display: "flex", width: "100%", gap: 12 }}>
-            <Button
-              type="primary"
-              size="large"
-              loading={creating}
-              style={{ background: SIDE_COLOR.buy, borderColor: SIDE_COLOR.buy, flex: 1, textAlign: "center" }}
-              onClick={() => {
-                setSide("buy");
-                void handleSubmit();
+              <Button icon={<CaretUpOutlined />} onClick={() => setQuantity((q) => Number(((q || 0) + 0.0001).toFixed(4)))} />
+            </Space.Compact>
+          </Form.Item>
+          <div style={{ margin: "4px 4px 8px 4px" }}>
+            <Slider
+              marks={{
+                0: "0%",
+                25: "25%",
+                50: "50%",
+                75: "75%",
+                100: "100%",
               }}
-            >
-              BUY
-            </Button>
-            <Button
-              type="primary"
-              size="large"
-              loading={creating}
-              style={{ background: SIDE_COLOR.sell, borderColor: SIDE_COLOR.sell, flex: 1, textAlign: "center" }}
-              onClick={() => {
-                setSide("sell");
-                void handleSubmit();
+              step={null}
+              onChange={(val) => {
+                const pct = Array.isArray(val) ? val[0] : val;
+                if (!pct && pct !== 0) return;
+                if (quantity && quantity > 0) {
+                  setQuantity(Number((quantity * (pct / 100)).toFixed(4)));
+                } else {
+                  setQuantity(Number((pct / 100).toFixed(4)));
+                }
               }}
-            >
-              SELL
-            </Button>
+              defaultValue={0}
+            />
           </div>
-        </Space>
-        <Divider style={{ borderColor: "#222" }} />
-      </div>
-    </ConfigProvider>
+        </Form>
+
+        {error && <Typography.Text type="danger">{error}</Typography.Text>}
+
+        <div style={{ display: "flex", width: "100%", gap: 12 }}>
+          <Button
+            type="primary"
+            size="large"
+            loading={creating}
+            style={{ background: SIDE_COLOR.buy, borderColor: SIDE_COLOR.buy, flex: 1, textAlign: "center" }}
+            onClick={() => {
+              setSide("buy");
+              void handleSubmit();
+            }}
+          >
+            BUY
+          </Button>
+          <Button
+            type="primary"
+            size="large"
+            loading={creating}
+            style={{ background: SIDE_COLOR.sell, borderColor: SIDE_COLOR.sell, flex: 1, textAlign: "center" }}
+            onClick={() => {
+              setSide("sell");
+              void handleSubmit();
+            }}
+          >
+            SELL
+          </Button>
+        </div>
+      </Space>
+      <Divider style={{ borderColor: "var(--ant-color-border)" }} />
+    </div>
   );
 }

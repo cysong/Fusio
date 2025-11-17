@@ -3,14 +3,14 @@
   flex-direction: column;
   min-height: calc(100vh - 60px);
   width: 100%;
-  background-color: #0b0e11;
+  background-color: var(--ant-color-bg-layout);
 }
 
 /* Top Header - Full Width, Single Line */
 .trading-header {
   height: 60px;
-  background-color: #0f1114;
-  border-bottom: 1px solid #1f252c;
+  background-color: var(--ant-color-bg-container);
+  border-bottom: 1px solid var(--ant-color-border);
   padding: 0 16px;
   display: flex;
   align-items: center;
@@ -30,7 +30,7 @@
 .trading-orderbook {
   width: 20%;
   min-width: 280px;
-  background-color: #0f1114;
+  background-color: var(--ant-color-bg-container);
   border-radius: 4px;
   overflow: hidden;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
@@ -45,7 +45,7 @@
 .trading-chart {
   flex: 1;
   min-width: 600px;
-  background-color: #0f1114;
+  background-color: var(--ant-color-bg-container);
   border-radius: 4px;
   overflow: hidden;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
@@ -59,7 +59,7 @@
 .trading-form {
   width: 20%;
   min-width: 320px;
-  background-color: #0f1114;
+  background-color: var(--ant-color-bg-container);
   border-radius: 4px;
   overflow: hidden;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
@@ -71,8 +71,8 @@
 /* Bottom: Order Management - Fixed Height */
 .trading-orders {
   height: 280px;
-  background-color: #0f1114;
-  border-top: 1px solid #1f252c;
+  background-color: var(--ant-color-bg-container);
+  border-top: 1px solid var(--ant-color-border);
   overflow: auto;
   padding: 16px;
 }

@@ -39,7 +39,7 @@ export default function MainLayout() {
       icon: <ShoppingOutlined />,
       label: 'Trading',
       children: [
-        { key: '/app/trading/spot', label: 'Spot' },
+        { key: '/app/trading/BTC-USDT?exchange=binance', label: 'Spot' },
         { key: '/app/trading/orders', label: 'Orders' },
       ],
     },
@@ -104,7 +104,7 @@ export default function MainLayout() {
           size="small"
           style={{
             margin: 16,
-            background: 'rgba(255,255,255,0.1)',
+            background: 'var(--ant-color-fill-secondary)',
             border: 'none',
             cursor: 'pointer',
           }}
@@ -113,12 +113,12 @@ export default function MainLayout() {
         >
           <Space direction="vertical" size={4} style={{ width: '100%' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <UserOutlined style={{ color: '#fff', fontSize: 16 }} />
-              <Text strong style={{ color: '#fff', fontSize: 14 }}>
+              <UserOutlined style={{ color: 'var(--ant-color-text)', fontSize: 16 }} />
+              <Text strong style={{ color: 'var(--ant-color-text)', fontSize: 14 }}>
                 {user.nickname}
               </Text>
             </div>
-            <Text style={{ color: 'rgba(255,255,255,0.65)', fontSize: 12 }}>
+            <Text style={{ color: 'var(--ant-color-text-secondary)', fontSize: 12 }}>
               {user.email}
             </Text>
             <Statistic
@@ -161,7 +161,7 @@ export default function MainLayout() {
           style={{
             padding: 24,
             minHeight: 280,
-            background: '#f0f2f5',
+            background: 'var(--ant-color-bg-layout)',
           }}
         >
           <Outlet />

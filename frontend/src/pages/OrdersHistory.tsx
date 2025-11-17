@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Form, Select, Input, Button, Table, Tag, Space, ConfigProvider, theme, Typography } from "antd";
+import { Form, Select, Input, Button, Table, Tag, Space, Typography } from "antd";
 import type { ColumnsType, TablePaginationConfig } from "antd/es/table";
 import { listOrders } from "@/api/orders";
 import type { Order } from "@/types/order";
@@ -78,93 +78,82 @@ export default function OrdersHistory() {
   ];
 
   return (
-    <ConfigProvider
-      theme={{
-        algorithm: theme.darkAlgorithm,
-        token: {
-          colorBgContainer: "#0f1114",
-          colorText: "#EAECEF",
-          colorBorder: "#2B3139",
-        },
-      }}
-    >
-      <div style={{ padding: 16, background: "#0f1114", minHeight: "100%", borderRadius: 8 }}>
-        <Typography.Title level={3} style={{ color: "#EAECEF" }}>
-          Order History
-        </Typography.Title>
-        <Form
-          form={form}
-          layout="inline"
-          style={{ marginBottom: 12 }}
-          onFinish={() => fetchData(pagination.current || 1, pagination.pageSize || 20)}
-        >
-          <Form.Item name="exchange" label="Exchange">
-            <Input placeholder="ex: binance" allowClear />
-          </Form.Item>
-          <Form.Item name="symbol" label="Symbol">
-            <Input placeholder="ex: BTC/USDT" allowClear />
-          </Form.Item>
-          <Form.Item name="status" label="Status">
-            <Select
-              allowClear
-              options={[
-                "pending",
-                "submitted",
-                "partially_filled",
-                "filled",
-                "canceled",
-                "rejected",
-                "expired",
-              ].map((v) => ({ label: v, value: v }))}
-              style={{ width: 160 }}
-            />
-          </Form.Item>
-          <Form.Item name="side" label="Side">
-            <Select
-              allowClear
-              options={[
-                { label: "BUY", value: "buy" },
-                { label: "SELL", value: "sell" },
-              ]}
-              style={{ width: 120 }}
-            />
-          </Form.Item>
-          <Form.Item name="type" label="Type">
-            <Select
-              allowClear
-              options={[
-                { label: "Market", value: "market" },
-                { label: "Limit", value: "limit" },
-              ]}
-              style={{ width: 140 }}
-            />
-          </Form.Item>
-          <Form.Item>
-            <Space>
-              <Button type="primary" onClick={() => fetchData(1, pagination.pageSize || 20)}>
-                Search
-              </Button>
-              <Button onClick={() => form.resetFields()}>Reset</Button>
-            </Space>
-          </Form.Item>
-        </Form>
+    <div style={{ padding: 16, background: "var(--ant-color-bg-container)", minHeight: "100%", borderRadius: 8 }}>
+      <Typography.Title level={3} style={{ color: "var(--ant-color-text)" }}>
+        Order History
+      </Typography.Title>
+      <Form
+        form={form}
+        layout="inline"
+        style={{ marginBottom: 12 }}
+        onFinish={() => fetchData(pagination.current || 1, pagination.pageSize || 20)}
+      >
+        <Form.Item name="exchange" label="Exchange">
+          <Input placeholder="ex: binance" allowClear />
+        </Form.Item>
+        <Form.Item name="symbol" label="Symbol">
+          <Input placeholder="ex: BTC/USDT" allowClear />
+        </Form.Item>
+        <Form.Item name="status" label="Status">
+          <Select
+            allowClear
+            options={[
+              "pending",
+              "submitted",
+              "partially_filled",
+              "filled",
+              "canceled",
+              "rejected",
+              "expired",
+            ].map((v) => ({ label: v, value: v }))}
+            style={{ width: 160 }}
+          />
+        </Form.Item>
+        <Form.Item name="side" label="Side">
+          <Select
+            allowClear
+            options={[
+              { label: "BUY", value: "buy" },
+              { label: "SELL", value: "sell" },
+            ]}
+            style={{ width: 120 }}
+          />
+        </Form.Item>
+        <Form.Item name="type" label="Type">
+          <Select
+            allowClear
+            options={[
+              { label: "Market", value: "market" },
+              { label: "Limit", value: "limit" },
+            ]}
+            style={{ width: 140 }}
+          />
+        </Form.Item>
+        <Form.Item>
+          <Space>
+            <Button type="primary" onClick={() => fetchData(1, pagination.pageSize || 20)}>
+              Search
+            </Button>
+            <Button onClick={() => form.resetFields()}>Reset</Button>
+          </Space>
+        </Form.Item>
+      </Form>
 
-        <Table
-          size="small"
-          loading={loading}
-          columns={columns}
-          dataSource={orders}
-          rowKey="id"
-          pagination={{
-            current: pagination.current,
-            pageSize: pagination.pageSize,
-            total,
-            onChange: (page, pageSize) => fetchData(page, pageSize),
-          }}
-          scroll={{ y: 400 }}
-          style={{ background: "#0f1114" }}
-        />
-      </div>
-    </ConfigProvider>
+      <Table
+        size="small"
+        loading={loading}
+        columns={columns}
+        dataSource={orders}
+        rowKey="id"
+        pagination={{
+          current: pagination.current,
+          pageSize: pagination.pageSize,
+          total,
+          onChange: (page, pageSize) => fetchData(page, pageSize),
+        }}
+        scroll={{ y: 400 }}
+        style={{ background: "var(--ant-color-bg-container)" }}
+      />
+    </div>
   );
 }

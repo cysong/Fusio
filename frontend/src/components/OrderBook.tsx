@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { Typography } from "antd";
 import { useTradingStore } from "@/stores/tradingStore";
 import { getSymbolPrecision } from "@/config/symbolPrecision";
 import styles from "./OrderBook.module.css";
@@ -55,7 +56,9 @@ export default function OrderBook({ symbol, exchange }: OrderBookProps) {
     return (
       <div className={styles.orderbookContainer}>
         <div className={styles.orderbookHeader}>
-          <span>Order Book</span>
+          <Typography.Title level={4} className={styles.panelTitle}>
+            Order Book
+          </Typography.Title>
         </div>
         <div className={styles.orderbookLoading}>
           <p>Waiting for orderbook data...</p>
@@ -95,7 +98,9 @@ export default function OrderBook({ symbol, exchange }: OrderBookProps) {
   return (
     <div className={styles.orderbookContainer}>
       <div className={styles.orderbookHeader}>
-        <span>Order Book</span>
+        <Typography.Title level={4} className={styles.panelTitle}>
+          Order Book
+        </Typography.Title>
         <span className={styles.orderbookTimestamp}>
           {new Date(orderBook.timestamp).toLocaleTimeString()}
         </span>

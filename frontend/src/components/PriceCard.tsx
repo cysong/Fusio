@@ -59,7 +59,11 @@ export default function PriceCard({ ticker }: PriceCardProps) {
       onClick={handleClick}
       style={{
         transition: 'all 0.3s',
-        backgroundColor: flash ? (isPositive ? '#f6ffed' : '#fff2f0') : 'white',
+        backgroundColor: flash
+          ? isPositive
+            ? 'color-mix(in srgb, var(--ant-color-success) 15%, var(--ant-color-bg-container))'
+            : 'color-mix(in srgb, var(--ant-color-error) 15%, var(--ant-color-bg-container))'
+          : 'var(--ant-color-bg-container)',
         cursor: 'pointer',
       }}
       hoverable

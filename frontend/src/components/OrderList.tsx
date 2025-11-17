@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Table, Tag, Button, Space, Typography, Alert, ConfigProvider, theme } from "antd";
+import { Table, Tag, Button, Space, Typography, Alert } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useOrderStore } from "@/stores/orderStore";
 import { useTradingStore } from "@/stores/tradingStore";
@@ -120,49 +120,38 @@ export default function OrderList() {
   ];
 
   return (
-    <ConfigProvider
-      theme={{
-        algorithm: theme.darkAlgorithm,
-        token: {
-          colorBgContainer: "#0f1114",
-          colorText: "#EAECEF",
-          colorBorder: "#2B3139",
-        },
-      }}
-    >
-      <div style={{ padding: 16, background: "#0f1114", borderRadius: 8, height: "100%", display: "flex", flexDirection: "column", gap: 12 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <Typography.Title level={4} style={{ margin: 0, color: "#EAECEF" }}>
-            Orders
-          </Typography.Title>
-          <Typography.Text type="secondary">Recent orders</Typography.Text>
-        </div>
-        {error && (
-          <Alert
-            type="error"
-            message="Failed to load orders"
-            description={error}
-            showIcon
-            style={{ marginBottom: 4 }}
-          />
-        )}
-        <Table
-          size="small"
-          loading={loading}
-          columns={columns}
-          dataSource={orders}
-          rowKey="id"
-          pagination={false}
-          scroll={{ y: 180 }}
-          locale={{ emptyText: "No orders" }}
-          style={{ flex: 1 }}
-        />
-        <div style={{ textAlign: "right", marginTop: 4 }}>
-          <Button type="link" size="small" href="/app/trading/orders" style={{ padding: 0 }}>
-            View more
-          </Button>
-        </div>
+    <div style={{ padding: 16, background: "var(--ant-color-bg-container)", borderRadius: 8, height: "100%", display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <Typography.Title level={4} style={{ margin: 0, color: "var(--ant-color-text)" }}>
+          Orders
+        </Typography.Title>
+        <Typography.Text type="secondary">Recent orders</Typography.Text>
       </div>
-    </ConfigProvider>
+      {error && (
+        <Alert
+          type="error"
+          message="Failed to load orders"
+          description={error}
+          showIcon
+          style={{ marginBottom: 4 }}
+        />
+      )}
+      <Table
+        size="small"
+        loading={loading}
+        columns={columns}
+        dataSource={orders}
+        rowKey="id"
+        pagination={false}
+        scroll={{ y: 180 }}
+        locale={{ emptyText: "No orders" }}
+        style={{ flex: 1 }}
+      />
+      <div style={{ textAlign: "right", marginTop: 4 }}>
+        <Button type="link" size="small" href="/app/trading/orders" style={{ padding: 0 }}>
+          View more
+        </Button>
+      </div>
+    </div>
   );
 }

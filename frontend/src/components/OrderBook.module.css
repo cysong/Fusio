@@ -2,10 +2,10 @@
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: #1e2329;
+  background: var(--ant-color-bg-container);
   font-family: "Roboto Mono", monospace;
   font-size: 12px;
-  color: #eaecef;
+  color: var(--ant-color-text);
   overflow: hidden;
 }
 
@@ -15,16 +15,22 @@
   align-items: center;
   height: 48px;
   padding: 0 16px;
-  border-bottom: 1px solid #2b3139;
-  font-weight: 600;
-  font-size: 14px;
-  line-height: 48px;
+  border-bottom: 1px solid var(--ant-color-border);
   flex-shrink: 0;
+}
+
+.panelTitle {
+  margin: 0;
+  padding: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ant-color-text);
+  line-height: 1.2;
 }
 
 .orderbookTimestamp {
   font-size: 11px;
-  color: #848e9c;
+  color: var(--ant-color-text-secondary);
   font-weight: normal;
 }
 
@@ -34,9 +40,9 @@
   height: 32px;
   padding: 0 16px;
   align-items: center;
-  color: #848e9c;
+  color: var(--ant-color-text-secondary);
   font-size: 11px;
-  border-bottom: 1px solid #2b3139;
+  border-bottom: 1px solid var(--ant-color-border);
   flex-shrink: 0;
 }
 
@@ -55,7 +61,7 @@
   align-items: center;
   justify-content: center;
   flex: 1;
-  color: #848e9c;
+  color: var(--ant-color-text-secondary);
   padding: 20px;
   text-align: center;
 }
@@ -86,13 +92,13 @@
 
 .orderbookAsks::-webkit-scrollbar-thumb,
 .orderbookBids::-webkit-scrollbar-thumb {
-  background: #2b3139;
+  background: var(--ant-color-border);
   border-radius: 2px;
 }
 
 .orderbookAsks::-webkit-scrollbar-thumb:hover,
 .orderbookBids::-webkit-scrollbar-thumb:hover {
-  background: #3a4149;
+  background: var(--ant-color-border);
 }
 
 .orderbookRow {
@@ -144,7 +150,7 @@
 .orderbookQuantity {
   flex: 1;
   text-align: right;
-  color: #eaecef;
+  color: var(--ant-color-text);
 }
 
 .orderbookSpread {
@@ -154,16 +160,16 @@
   height: 60px;
   padding: 0 16px;
   margin: 0;
-  border-top: 1px solid #2b3139;
-  border-bottom: 1px solid #2b3139;
-  background: #1e2329;
+  border-top: 1px solid var(--ant-color-border);
+  border-bottom: 1px solid var(--ant-color-border);
+  background: var(--ant-color-bg-container);
   flex-shrink: 0;
 }
 
 .spreadPrice {
   font-size: 18px;
   font-weight: bold;
-  color: #eaecef;
+  color: var(--ant-color-text);
   font-family: "Roboto Mono", monospace;
 }
 
@@ -178,7 +184,7 @@
 .spreadLabel {
   font-size: 12px;
   font-weight: 500;
-  color: #6f7682;
+  color: var(--ant-color-text-secondary);
   letter-spacing: 0.3px;
 }
 

@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { ConfigProvider, theme } from 'antd';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from './lib/queryClient';
 import { PrivateRoute } from './components/PrivateRoute';
@@ -12,96 +13,106 @@ import ComingSoonPlaceholder from './components/ComingSoonPlaceholder';
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <Routes>
-          {/* Public Route - Landing Page */}
-          <Route path="/" element={<LandingPage />} />
+    <ConfigProvider>
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <Routes>
+            {/* Public Route - Landing Page */}
+            <Route path="/" element={<LandingPage />} />
 
-          {/* Protected Routes - Main Layout */}
-          <Route
-            path="/app"
-            element={
-              <PrivateRoute>
-                <MainLayout />
-              </PrivateRoute>
-            }
-          >
-            {/* Market */}
-            <Route path="market">
-              <Route index element={<Navigate to="/app/market/overview" replace />} />
-              <Route path="overview" element={<Dashboard />} />
-              <Route
-                path="comparison"
-                element={
-                  <ComingSoonPlaceholder
-                    title="Market Comparison"
-                    description="Table view for comparing prices across exchanges will be available soon."
-                    version="V0.4"
-                  />
-                }
-              />
-            </Route>
+            {/* Protected Routes - Main Layout */}
+            <Route
+              path="/app"
+              element={
+                <PrivateRoute>
+                  <ConfigProvider
+                    theme={{
+                      algorithm: theme.darkAlgorithm,
+                      cssVar: true,
+                    }}
+                  >
+                    <MainLayout />
+                  </ConfigProvider>
+                </PrivateRoute>
+              }
+            >
+              {/* Market */}
+              <Route path="market">
+                <Route index element={<Navigate to="/app/market/overview" replace />} />
+                <Route path="overview" element={<Dashboard />} />
+                <Route
+                  path="comparison"
+                  element={
+                    <ComingSoonPlaceholder
+                      title="Market Comparison"
+                      description="Table view for comparing prices across exchanges will be available soon."
+                      version="V0.4"
+                    />
+                  }
+                />
+              </Route>
 
             {/* Trading */}
             <Route path="trading">
-              <Route path=":symbol?" element={<TradingPage />} />
+              <Route index element={<Navigate to="/app/trading/BTC-USDT?exchange=binance" replace />} />
+              <Route path=":symbol" element={<TradingPage />} />
               <Route path="orders" element={<OrdersHistory />} />
             </Route>
 
-            {/* Portfolio */}
-            <Route path="portfolio">
-              <Route
-                path="balance"
-                element={
-                  <ComingSoonPlaceholder
-                    title="Portfolio Balance"
-                    description="Track your assets and balances across all exchanges."
-                    version="V0.4"
-                  />
-                }
-              />
-              <Route
-                path="history"
-                element={
-                  <ComingSoonPlaceholder
-                    title="Transaction History"
-                    description="View your complete trading and transaction history."
-                    version="V0.4"
-                  />
-                }
-              />
+              {/* Portfolio */}
+              <Route path="portfolio">
+                <Route
+                  path="balance"
+                  element={
+                    <ComingSoonPlaceholder
+                      title="Portfolio Balance"
+                      description="Track your assets and balances across all exchanges."
+                      version="V0.4"
+                    />
+                  }
+                />
+                <Route
+                  path="history"
+                  element={
+                    <ComingSoonPlaceholder
+                      title="Transaction History"
+                      description="View your complete trading and transaction history."
+                      version="V0.4"
+                    />
+                  }
+                />
+              </Route>
+
+              {/* Settings */}
+              <Route path="settings">
+                <Route path="profile" element={<UserProfile />} />
+                <Route
+                  path="security"
+                  element={
+                    <ComingSoonPlaceholder
+                      title="Security Settings"
+                      description="Manage your security preferences including 2FA and API keys."
+                      version="V0.7"
+                    />
+                  }
+                />
+              </Route>
+
+              {/* Default Route - Redirect to Market Overview */}
+              <Route index element={<Navigate to="/app/market/overview" replace />} />
             </Route>
 
-            {/* Settings */}
-            <Route path="settings">
-              <Route path="profile" element={<UserProfile />} />
-              <Route
-                path="security"
-                element={
-                  <ComingSoonPlaceholder
-                    title="Security Settings"
-                    description="Manage your security preferences including 2FA and API keys."
-                    version="V0.7"
-                  />
-                }
-              />
-            </Route>
+            {/* Legacy Routes - Redirect to new structure */}
+            <Route path="/login" element={<Navigate to="/" replace />} />
+            <Route path="/register" element={<Navigate to="/" replace />} />
+            <Route path="/dashboard" element={<Navigate to="/app/market/overview" replace />} />
 
-            {/* Default Route - Redirect to Market Overview */}
-            <Route index element={<Navigate to="/app/market/overview" replace />} />
-          </Route>
-
-          {/* Legacy Routes - Redirect to new structure */}
-          <Route path="/login" element={<Navigate to="/" replace />} />
-          <Route path="/register" element={<Navigate to="/" replace />} />
-          <Route path="/dashboard" element={<Navigate to="/app/market/overview" replace />} />
-
-          {/* 404 Fallback */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </BrowserRouter>
-    </QueryClientProvider>
+            {/* 404 Fallback */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </BrowserRouter>
+      </QueryClientProvider>
+    </ConfigProvider>
   );
 }
 
