@@ -7,6 +7,7 @@ import { QueryOrdersDto } from './dto/query-order.dto';
 import { OrderStatus, OrderType } from './constants/order-status.enum';
 import { MockOrderExecutor } from './executors/mock-order.executor';
 import { RiskEngine } from './risk/risk-engine';
+import { OrderGateway } from './order.gateway';
 
 @Injectable()
 export class OrderService {
@@ -15,6 +16,7 @@ export class OrderService {
     private readonly orderRepo: Repository<OrderEntity>,
     private readonly mockExecutor: MockOrderExecutor,
     private readonly riskEngine: RiskEngine,
+    private readonly orderGateway: OrderGateway,
   ) { }
 
   async createOrder(dto: CreateOrderDto, userId: string): Promise<OrderEntity> {
@@ -51,7 +53,9 @@ export class OrderService {
     order.errorCode = result.errorCode;
     order.errorMessage = result.errorMessage;
 
-    return this.orderRepo.save(order);
+    const saved = await this.orderRepo.save(order);
+    this.orderGateway.broadcastUpdate(saved);
+    return saved;
   }
 
   async cancelOrder(id: string, userId: string): Promise<OrderEntity> {
@@ -68,7 +72,9 @@ export class OrderService {
     order.errorCode = undefined;
     order.errorMessage = undefined;
 
-    return this.orderRepo.save(order);
+    const saved = await this.orderRepo.save(order);
+    this.orderGateway.broadcastUpdate(saved);
+    return saved;
   }
 
   async getOrderById(id: string, userId: string): Promise<OrderEntity> {
