@@ -7,6 +7,7 @@ import MainLayout from './layouts/MainLayout';
 import Dashboard from './pages/Dashboard';
 import UserProfile from './pages/settings/UserProfile';
 import TradingPage from './pages/TradingPage';
+import OrdersHistory from './pages/OrdersHistory';
 import ComingSoonPlaceholder from './components/ComingSoonPlaceholder';
 
 function App() {
@@ -45,16 +46,7 @@ function App() {
             {/* Trading */}
             <Route path="trading">
               <Route path=":symbol?" element={<TradingPage />} />
-              <Route
-                path="orders"
-                element={
-                  <ComingSoonPlaceholder
-                    title="Order Management"
-                    description="View and manage your trading orders and execution history."
-                    version="V0.4"
-                  />
-                }
-              />
+              <Route path="orders" element={<OrdersHistory />} />
             </Route>
 
             {/* Portfolio */}

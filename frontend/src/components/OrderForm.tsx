@@ -1,16 +1,20 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { Button, Form, InputNumber, Segmented, Space, Tag, Typography, Divider, ConfigProvider, theme, Slider } from "antd";
+import { CaretUpOutlined, CaretDownOutlined } from "@ant-design/icons";
 import { useOrderStore } from "@/stores/orderStore";
 import { useTradingStore } from "@/stores/tradingStore";
-
-const SIDE_OPTIONS = [
-  { label: "Buy", value: "buy" as const },
-  { label: "Sell", value: "sell" as const },
-];
 
 const TYPE_OPTIONS = [
   { label: "Market", value: "market" as const },
   { label: "Limit", value: "limit" as const },
 ];
+
+const SIDE_COLOR: Record<"buy" | "sell", string> = {
+  buy: "#0ECB81",
+  sell: "#F6465D",
+};
+
+const QUICK_QTY = [25, 50, 75, 100];
 
 export default function OrderForm() {
   const { selectedExchange, selectedSymbol } = useTradingStore();
@@ -18,23 +22,38 @@ export default function OrderForm() {
 
   const [side, setSide] = useState<"buy" | "sell">("buy");
   const [type, setType] = useState<"market" | "limit">("limit");
-  const [price, setPrice] = useState<string>("");
-  const [quantity, setQuantity] = useState<string>("");
+  const [price, setPrice] = useState<number | undefined>(undefined);
+  const [quantity, setQuantity] = useState<number | undefined>(undefined);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const pairLabel = useMemo(() => `${selectedSymbol} · ${selectedExchange.toUpperCase()}`, [selectedSymbol, selectedExchange]);
+  const priceKey = useMemo(() => `${selectedExchange}:${selectedSymbol}`, [selectedExchange, selectedSymbol]);
+  const ticker = useTradingStore((s) => s.tickers[priceKey]);
+  const orderBook = useTradingStore((s) => s.orderBooks[priceKey]);
+
+  const currentPrice = useMemo(() => {
+    if (ticker?.price) return ticker.price;
+    const bestBid = orderBook?.bids?.[0]?.[0];
+    const bestAsk = orderBook?.asks?.[0]?.[0];
+    if (bestBid && bestAsk) {
+      const mid = (parseFloat(bestBid) + parseFloat(bestAsk)) / 2;
+      return Number(mid.toFixed(4));
+    }
+    if (bestAsk) return Number(parseFloat(bestAsk).toFixed(4));
+    if (bestBid) return Number(parseFloat(bestBid).toFixed(4));
+    return undefined;
+  }, [ticker, orderBook]);
+
+  const handleSubmit = async () => {
     setError(undefined);
-    const qtyNum = parseFloat(quantity);
-    const priceNum = parseFloat(price);
     if (!selectedSymbol || !selectedExchange) {
       setError("Select symbol and exchange");
       return;
     }
-    if (!qtyNum || qtyNum <= 0) {
+    if (!quantity || quantity <= 0) {
       setError("Quantity must be > 0");
       return;
     }
-    if (type === "limit" && (!priceNum || priceNum <= 0)) {
+    if (type === "limit" && (!price || price <= 0)) {
       setError("Limit order requires price > 0");
       return;
     }
@@ -44,83 +63,141 @@ export default function OrderForm() {
       symbol: selectedSymbol,
       side,
       type,
-      quantity: qtyNum,
-      price: type === "limit" ? priceNum : undefined,
+      quantity,
+      price: type === "limit" ? price : undefined,
     });
   };
 
   return (
-    <div className="order-form">
-      <div className="order-form__header">
-        <h3>Place Order</h3>
-        <div className="order-form__pair">
-          <span>{selectedSymbol}</span>
-          <span className="exchange-tag">{selectedExchange.toUpperCase()}</span>
-        </div>
-      </div>
-      <form onSubmit={handleSubmit} className="order-form__body">
-        <div className="field">
-          <label>Side</label>
-          <div className="segmented">
-            {SIDE_OPTIONS.map((opt) => (
-              <button
-                key={opt.value}
-                type="button"
-                className={side === opt.value ? "active" : ""}
-                onClick={() => setSide(opt.value)}
-              >
-                {opt.label}
-              </button>
-            ))}
+    <ConfigProvider
+      theme={{
+        algorithm: theme.darkAlgorithm,
+        token: {
+          colorBgContainer: "#0f1114",
+          colorText: "#EAECEF",
+          colorBorder: "#2B3139",
+        },
+      }}
+    >
+      <div className="order-form" style={{ padding: 16, background: "#0f1114", borderRadius: 8 }}>
+        <Space direction="vertical" style={{ width: "100%" }} size="middle">
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <Typography.Title level={4} style={{ margin: 0, color: "#EAECEF" }}>
+              Place Order
+            </Typography.Title>
+            <Tag color="blue">{pairLabel}</Tag>
           </div>
-        </div>
 
-        <div className="field">
-          <label>Type</label>
-          <div className="segmented">
-            {TYPE_OPTIONS.map((opt) => (
-              <button
-                key={opt.value}
-                type="button"
-                className={type === opt.value ? "active" : ""}
-                onClick={() => setType(opt.value)}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {type === "limit" && (
-          <div className="field">
-            <label>Price</label>
-            <input
-              type="number"
-              step="0.0001"
-              value={price}
-              onChange={(e) => setPrice(e.target.value)}
-              placeholder="Enter price"
+          <div>
+            <Typography.Text style={{ color: "#EAECEF" }}>Type</Typography.Text>
+            <Segmented
+              block
+              options={TYPE_OPTIONS}
+              value={type}
+              onChange={(val) => setType(val as "limit" | "market")}
             />
           </div>
-        )}
 
-        <div className="field">
-          <label>Quantity</label>
-          <input
-            type="number"
-            step="0.0001"
-            value={quantity}
-            onChange={(e) => setQuantity(e.target.value)}
-            placeholder="Enter quantity"
-          />
-        </div>
+          {type === "limit" && (
+            <Form layout="vertical">
+              <Form.Item
+                label={
+                  <Space style={{ display: "flex", justifyContent: "space-between", width: "100%" }}>
+                    <Typography.Text style={{ color: "#EAECEF" }}>Price</Typography.Text>
+                    {currentPrice && (
+                      <Button size="small" onClick={() => setPrice(currentPrice)}>
+                        Use last {currentPrice}
+                      </Button>
+                    )}
+                  </Space>
+                }
+              >
+                <Space.Compact block>
+                  <Button icon={<CaretDownOutlined />} onClick={() => setPrice((p) => (p && p > 0.0001 ? Number((p - 0.0001).toFixed(4)) : 0.0001))} />
+                  <InputNumber
+                    style={{ flex: 1 }}
+                    min={0}
+                    step={0.0001}
+                    value={price}
+                    onChange={(v) => setPrice(typeof v === "number" ? v : undefined)}
+                    placeholder="Enter price"
+                  />
+                  <Button icon={<CaretUpOutlined />} onClick={() => setPrice((p) => Number(((p || 0) + 0.0001).toFixed(4)))} />
+                </Space.Compact>
+              </Form.Item>
+            </Form>
+          )}
 
-        {error && <div className="order-form__error">{error}</div>}
+          <Form layout="vertical" style={{ marginBottom: 4 }}>
+            <Form.Item label={<Typography.Text style={{ color: "#EAECEF" }}>Quantity</Typography.Text>}>
+              <Space.Compact block>
+                <Button icon={<CaretDownOutlined />} onClick={() => setQuantity((q) => (q && q > 0.0001 ? Number((q - 0.0001).toFixed(4)) : 0.0001))} />
+                <InputNumber
+                  style={{ flex: 1 }}
+                  min={0}
+                  step={0.0001}
+                  value={quantity}
+                  onChange={(v) => setQuantity(typeof v === "number" ? v : undefined)}
+                  placeholder="Enter quantity"
+                />
+                <Button icon={<CaretUpOutlined />} onClick={() => setQuantity((q) => Number(((q || 0) + 0.0001).toFixed(4)))} />
+              </Space.Compact>
+            </Form.Item>
+            <div style={{ margin: "4px 4px 8px 4px" }}>
+              <Slider
+                marks={{
+                  0: "0%",
+                  25: "25%",
+                  50: "50%",
+                  75: "75%",
+                  100: "100%",
+                }}
+                step={null}
+                onChange={(val) => {
+                  const pct = Array.isArray(val) ? val[0] : val;
+                  if (!pct && pct !== 0) return;
+                  if (quantity && quantity > 0) {
+                    setQuantity(Number((quantity * (pct / 100)).toFixed(4)));
+                  } else {
+                    setQuantity(Number((pct / 100).toFixed(4)));
+                  }
+                }}
+                defaultValue={0}
+              />
+            </div>
+          </Form>
 
-        <button type="submit" disabled={creating} className="submit-btn">
-          {creating ? "Submitting..." : "Submit Order"}
-        </button>
-      </form>
-    </div>
+          {error && <Typography.Text type="danger">{error}</Typography.Text>}
+
+          <div style={{ display: "flex", width: "100%", gap: 12 }}>
+            <Button
+              type="primary"
+              size="large"
+              loading={creating}
+              style={{ background: SIDE_COLOR.buy, borderColor: SIDE_COLOR.buy, flex: 1, textAlign: "center" }}
+              onClick={() => {
+                setSide("buy");
+                void handleSubmit();
+              }}
+            >
+              BUY
+            </Button>
+            <Button
+              type="primary"
+              size="large"
+              loading={creating}
+              style={{ background: SIDE_COLOR.sell, borderColor: SIDE_COLOR.sell, flex: 1, textAlign: "center" }}
+              onClick={() => {
+                setSide("sell");
+                void handleSubmit();
+              }}
+            >
+              SELL
+            </Button>
+          </div>
+        </Space>
+        <Divider style={{ borderColor: "#222" }} />
+      </div>
+    </ConfigProvider>
   );
 }

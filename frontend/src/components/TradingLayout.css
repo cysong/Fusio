@@ -3,14 +3,14 @@
   flex-direction: column;
   height: calc(100vh - 60px);
   width: 100%;
-  background-color: #f5f5f5;
+  background-color: #0b0e11;
 }
 
 /* Top Header - Full Width, Single Line */
 .trading-header {
   height: 60px;
-  background-color: white;
-  border-bottom: 1px solid #e8e8e8;
+  background-color: #0f1114;
+  border-bottom: 1px solid #1f252c;
   padding: 0 16px;
   display: flex;
   align-items: center;
@@ -29,10 +29,10 @@
 .trading-orderbook {
   width: 20%;
   min-width: 280px;
-  background-color: white;
+  background-color: #0f1114;
   border-radius: 4px;
   overflow: hidden;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -42,10 +42,10 @@
 .trading-chart {
   flex: 1;
   min-width: 600px;
-  background-color: white;
+  background-color: #0f1114;
   border-radius: 4px;
   overflow: hidden;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -55,18 +55,20 @@
 .trading-form {
   width: 25%;
   min-width: 320px;
-  background-color: white;
+  background-color: #0f1114;
   border-radius: 4px;
-  overflow: auto;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
 }
 
 /* Bottom: Order Management - Fixed Height */
 .trading-orders {
-  height: 240px;
-  background-color: white;
-  border-top: 1px solid #e8e8e8;
-  overflow: auto;
+  height: 280px;
+  background-color: #0f1114;
+  border-top: 1px solid #1f252c;
+  overflow: hidden;
   padding: 16px;
 }
 
@@ -109,20 +111,17 @@
 
 /* Scroll Behavior */
 .trading-orderbook::-webkit-scrollbar,
-.trading-form::-webkit-scrollbar,
 .trading-orders::-webkit-scrollbar {
   width: 6px;
 }
 
 .trading-orderbook::-webkit-scrollbar-thumb,
-.trading-form::-webkit-scrollbar-thumb,
 .trading-orders::-webkit-scrollbar-thumb {
   background-color: rgba(0, 0, 0, 0.2);
   border-radius: 3px;
 }
 
 .trading-orderbook::-webkit-scrollbar-thumb:hover,
-.trading-form::-webkit-scrollbar-thumb:hover,
 .trading-orders::-webkit-scrollbar-thumb:hover {
   background-color: rgba(0, 0, 0, 0.3);
 }

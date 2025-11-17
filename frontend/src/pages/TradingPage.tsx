@@ -19,22 +19,20 @@ export default function TradingPage() {
   const initialSymbol = symbol ? symbol.replace("-", "/") : "BTC/USDT";
   const initialExchange = searchParams.get("exchange") || "binance";
 
-  const storeRef = useTradingStore.getState();
-  if (
-    storeRef.selectedSymbol !== initialSymbol ||
-    storeRef.selectedExchange !== initialExchange
-  ) {
-    storeRef.setSelectedSymbol(initialSymbol);
-    storeRef.setSelectedExchange(initialExchange);
+  // Local state for symbol and exchange
+  const [currentSymbol, setCurrentSymbol] = useState(initialSymbol);
+  const [currentExchange, setCurrentExchange] = useState(initialExchange);
+
+  // Sync URL defaults to store once on mount
+  useEffect(() => {
+    useTradingStore.getState().setSelectedSymbol(initialSymbol);
+    useTradingStore.getState().setSelectedExchange(initialExchange);
     console.log("🔄 Store initialized from URL:", {
       symbol: initialSymbol,
       exchange: initialExchange,
     });
-  }
-
-  // Local state for symbol and exchange
-  const [currentSymbol, setCurrentSymbol] = useState(initialSymbol);
-  const [currentExchange, setCurrentExchange] = useState(initialExchange);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Subscribe to WebSocket updates
   useOrderBook();

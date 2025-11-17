@@ -1,10 +1,5 @@
-import axios from 'axios';
+import apiClient from '../lib/axios';
 import type { Order } from '@/types/order';
-
-const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:4000/api',
-  withCredentials: true,
-});
 
 export interface CreateOrderPayload {
   exchange: string;
@@ -17,8 +12,7 @@ export interface CreateOrderPayload {
 }
 
 export async function createOrder(payload: CreateOrderPayload): Promise<Order> {
-  const res = await apiClient.post('/orders', payload);
-  return res.data.data;
+  return apiClient.post('/orders', payload);
 }
 
 export interface ListOrdersQuery {
@@ -32,11 +26,9 @@ export interface ListOrdersQuery {
 }
 
 export async function listOrders(query: ListOrdersQuery): Promise<{ data: Order[]; total: number }> {
-  const res = await apiClient.get('/orders', { params: query });
-  return res.data.data;
+  return apiClient.get('/orders', { params: query });
 }
 
 export async function cancelOrder(id: string): Promise<Order> {
-  const res = await apiClient.post(`/orders/${id}/cancel`);
-  return res.data.data;
+  return apiClient.post(`/orders/${id}/cancel`);
 }
