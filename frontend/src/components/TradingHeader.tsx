@@ -1,9 +1,9 @@
-import { useEffect, useState, useMemo } from 'react';
-import { Select, Tag } from 'antd';
-import { ArrowUpOutlined, ArrowDownOutlined } from '@ant-design/icons';
-import { socketClient } from '@/lib/socket';
-import type { TickerData } from '@/types/market';
-import './TradingHeader.css';
+import { useEffect, useState, useMemo } from "react";
+import { Select, Tag } from "antd";
+import { ArrowUpOutlined, ArrowDownOutlined } from "@ant-design/icons";
+import { socketClient } from "@/lib/socket";
+import type { TickerData } from "@/types/market";
+import "./TradingHeader.css";
 
 const { Option } = Select;
 
@@ -42,14 +42,14 @@ export default function TradingHeader({
       }));
     };
 
-    socket.on('connect', handleConnect);
-    socket.on('disconnect', handleDisconnect);
-    socket.on('ticker', handleTicker);
+    socket.on("connect", handleConnect);
+    socket.on("disconnect", handleDisconnect);
+    socket.on("ticker", handleTicker);
 
     return () => {
-      socket.off('connect', handleConnect);
-      socket.off('disconnect', handleDisconnect);
-      socket.off('ticker', handleTicker);
+      socket.off("connect", handleConnect);
+      socket.off("disconnect", handleDisconnect);
+      socket.off("ticker", handleTicker);
       socketClient.disconnect();
     };
   }, []);
@@ -61,7 +61,7 @@ export default function TradingHeader({
 
   // Get all tickers for current symbol across all exchanges
   const allExchangeTickers = useMemo(() => {
-    const exchanges = ['binance', 'bybit', 'okx'];
+    const exchanges = ["binance", "bybit", "okx"];
     return exchanges
       .map((ex) => tickers[`${ex}:${symbol}`])
       .filter((t) => t !== undefined);
@@ -73,7 +73,10 @@ export default function TradingHeader({
       return null;
     }
 
-    const prices = allExchangeTickers.map((t) => ({ exchange: t.exchange, price: t.price }));
+    const prices = allExchangeTickers.map((t) => ({
+      exchange: t.exchange,
+      price: t.price,
+    }));
     const highest = prices.reduce((max, p) => (p.price > max.price ? p : max));
     const lowest = prices.reduce((min, p) => (p.price < min.price ? p : min));
     const spread = highest.price - lowest.price;
@@ -83,21 +86,21 @@ export default function TradingHeader({
   }, [allExchangeTickers]);
 
   // Available symbols (from backend config)
-  const availableSymbols = ['BTC/USDT', 'ETH/USDT'];
-  const availableExchanges = ['binance', 'bybit', 'okx'];
+  const availableSymbols = ["BTC/USDT", "ETH/USDT"];
+  const availableExchanges = ["binance", "bybit", "okx"];
 
   const isPositive = currentTicker?.priceChangePercent >= 0;
-  const valueColor = isPositive ? '#3f8600' : '#cf1322';
+  const valueColor = isPositive ? "#3f8600" : "#cf1322";
 
   const formatPrice = (price: number) => {
-    return price.toLocaleString('en-US', {
+    return price.toLocaleString("en-US", {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     });
   };
 
   const formatNumber = (num: number) => {
-    return num.toLocaleString('en-US', {
+    return num.toLocaleString("en-US", {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     });
@@ -153,7 +156,7 @@ export default function TradingHeader({
           <div className="stat-item">
             <span className="stat-label">24h Volume</span>
             <span className="stat-value">
-              {formatNumber(currentTicker.volume)} {symbol.split('/')[0]}
+              {formatNumber(currentTicker.volume)} {symbol.split("/")[0]}
             </span>
           </div>
         </div>
@@ -165,23 +168,33 @@ export default function TradingHeader({
           <div className="price-comparison-left">
             <div className="price-row">
               <span className="label">High:</span>
-              <Tag color="green">{priceComparison.highest.exchange.toUpperCase()}</Tag>
-              <span className="value">${formatPrice(priceComparison.highest.price)}</span>
+              <Tag color="green">
+                {priceComparison.highest.exchange.toUpperCase()}
+              </Tag>
+              <span className="value">
+                ${formatPrice(priceComparison.highest.price)}
+              </span>
             </div>
             <div className="price-row">
               <span className="label">Low:</span>
-              <Tag color="red">{priceComparison.lowest.exchange.toUpperCase()}</Tag>
-              <span className="value">${formatPrice(priceComparison.lowest.price)}</span>
+              <Tag color="red">
+                {priceComparison.lowest.exchange.toUpperCase()}
+              </Tag>
+              <span className="value">
+                ${formatPrice(priceComparison.lowest.price)}
+              </span>
             </div>
           </div>
           <div className="price-comparison-right">
-            <span className="spread-label">Spread</span>
-            <span className="spread-value">
-              ${formatNumber(priceComparison.spread)}
-            </span>
-            <span className="spread-percent">
-              {priceComparison.spreadPercent.toFixed(2)}%
-            </span>
+            <div className="spread-left">Spread</div>
+            <div className="spread-right">
+              <div className="spread-value">
+                ${formatNumber(priceComparison.spread)}
+              </div>
+              <div className="spread-percent">
+                {priceComparison.spreadPercent.toFixed(2)}%
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -200,8 +213,12 @@ export default function TradingHeader({
             </Option>
           ))}
         </Select>
-        <div className={`connection-status ${isConnected ? 'connected' : 'disconnected'}`}>
-          {isConnected ? '🟢 Live' : '🔴 Disconnected'}
+        <div
+          className={`connection-status ${
+            isConnected ? "connected" : "disconnected"
+          }`}
+        >
+          {isConnected ? "🟢 Live" : "🔴 Disconnected"}
         </div>
       </div>
     </div>
