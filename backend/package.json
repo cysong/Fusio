@@ -20,6 +20,7 @@
     "test:e2e": "jest --config ./test/jest-e2e.json"
   },
   "dependencies": {
+    "@nestjs/bull": "^11.0.0",
     "@nestjs-modules/ioredis": "^2.0.2",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.2",
@@ -32,6 +33,7 @@
     "@nestjs/websockets": "^11.1.8",
     "@types/ws": "^8.18.1",
     "axios": "^1.13.2",
+    "bull": "^4.16.2",
     "bcrypt": "^6.0.0",
     "better-sqlite3": "^12.4.1",
     "class-transformer": "^0.5.1",

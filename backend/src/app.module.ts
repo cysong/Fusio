@@ -8,6 +8,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { MarketModule } from './modules/market/market.module';
 import { getDatabaseConfig } from './config/database.config';
 import { OrderModule } from './modules/order/order.module';
+import { BullModule } from '@nestjs/bull';
 
 @Module({
   imports: [
@@ -16,6 +17,12 @@ import { OrderModule } from './modules/order/order.module';
       envFilePath: [`.env.${process.env.NODE_ENV || 'development'}`, '.env'],
     }),
     TypeOrmModule.forRoot(getDatabaseConfig()),
+    BullModule.forRoot({
+      redis: {
+        host: process.env.REDIS_HOST || 'localhost',
+        port: parseInt(process.env.REDIS_PORT || '6379', 10),
+      },
+    }),
     RedisModule.forRoot({
       type: 'single',
       url: `redis://${process.env.REDIS_HOST || 'localhost'}:${process.env.REDIS_PORT || 6379}`,

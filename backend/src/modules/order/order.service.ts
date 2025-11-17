@@ -5,20 +5,19 @@ import { OrderEntity } from './entities/order.entity';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { QueryOrdersDto } from './dto/query-order.dto';
 import { OrderStatus, OrderType } from './constants/order-status.enum';
-import { MockOrderExecutor } from './executors/mock-order.executor';
 import { RiskEngine } from './risk/risk-engine';
 import { OrderGateway } from './order.gateway';
-import { OrderJobService } from './order.job';
+import { InjectQueue } from '@nestjs/bull';
+import { Queue } from 'bull';
 
 @Injectable()
 export class OrderService {
   constructor(
     @InjectRepository(OrderEntity)
     private readonly orderRepo: Repository<OrderEntity>,
-    private readonly mockExecutor: MockOrderExecutor,
     private readonly riskEngine: RiskEngine,
     private readonly orderGateway: OrderGateway,
-    private readonly orderJobService: OrderJobService,
+    @InjectQueue('orders') private readonly orderQueue: Queue,
   ) { }
 
   async createOrder(dto: CreateOrderDto, userId: string): Promise<OrderEntity> {
@@ -47,7 +46,7 @@ export class OrderService {
     this.orderGateway.broadcastUpdate(saved);
 
     // enqueue async execution (mock)
-    this.orderJobService.enqueue(saved.id);
+    await this.orderQueue.add('create', { orderId: saved.id });
     return saved;
   }
 
