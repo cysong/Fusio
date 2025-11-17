@@ -7,6 +7,7 @@ import { AppService } from './app.service';
 import { AuthModule } from './modules/auth/auth.module';
 import { MarketModule } from './modules/market/market.module';
 import { getDatabaseConfig } from './config/database.config';
+import { OrderModule } from './modules/order/order.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { getDatabaseConfig } from './config/database.config';
     }),
     AuthModule,
     MarketModule,
+    OrderModule,
   ],
   controllers: [AppController],
   providers: [AppService],
