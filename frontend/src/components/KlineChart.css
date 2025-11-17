@@ -61,7 +61,7 @@
 .kline-chart-wrapper {
   position: relative;
   flex: 1;
-  overflow: hidden;
+  overflow: visible; /* allow time axis labels to be visible */
 }
 
 .kline-chart {

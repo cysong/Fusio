@@ -89,11 +89,15 @@ export default function OrderBook({ symbol, exchange }: OrderBookProps) {
   };
 
   const formatPrice = (price: string) => {
-    return price;
+    const p = parseFloat(price);
+    if (Number.isNaN(p)) return price;
+    return p.toFixed(precision.price);
   };
 
   const formatQuantity = (quantity: string) => {
-    return quantity;
+    const q = parseFloat(quantity);
+    if (Number.isNaN(q)) return quantity;
+    return q.toFixed(precision.amount);
   };
 
   return (

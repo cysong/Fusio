@@ -52,6 +52,11 @@ export default function KlineChart() {
   useEffect(() => {
     if (!chartContainerRef.current) return;
 
+    const container = chartContainerRef.current;
+    const headerHeight = 48; // .kline-header fixed height
+    const computedHeight = Math.max(container.clientHeight - headerHeight, 320);
+    const computedWidth = container.clientWidth;
+
     const formatAxisTime = (unixSeconds: number) => {
       const isDailyOrAbove = ["1d", "1w", "1M"].includes(interval);
       const showSeconds = interval === "1s";
@@ -90,8 +95,8 @@ export default function KlineChart() {
         vertLines: { color: "#2B3139" },
         horzLines: { color: "#2B3139" },
       },
-      width: chartContainerRef.current.clientWidth,
-      height: 500,
+      width: computedWidth,
+      height: computedHeight,
       crosshair: {
         mode: 1,
         vertLine: {
@@ -254,8 +259,11 @@ export default function KlineChart() {
 
     const handleResize = () => {
       if (chartContainerRef.current && chartRef.current) {
+        const containerEl = chartContainerRef.current;
+        const h = Math.max(containerEl.clientHeight - headerHeight, 320);
         chartRef.current.applyOptions({
-          width: chartContainerRef.current.clientWidth,
+          width: containerEl.clientWidth,
+          height: h,
         });
       }
     };

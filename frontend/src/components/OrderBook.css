@@ -63,7 +63,7 @@
 .orderbook-asks,
 .orderbook-bids {
   flex: 1;
-  min-height: 200px;
+  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
 }
@@ -100,7 +100,8 @@
   position: relative;
   display: flex;
   justify-content: space-between;
-  padding: 4px 16px;
+  padding: 2px 12px;
+  line-height: 16px;
   cursor: pointer;
   transition: background 0.15s ease;
   z-index: 1;
