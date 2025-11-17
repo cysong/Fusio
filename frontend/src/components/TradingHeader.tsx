@@ -3,7 +3,7 @@ import { Select, Tag } from "antd";
 import { ArrowUpOutlined, ArrowDownOutlined } from "@ant-design/icons";
 import { socketClient } from "@/lib/socket";
 import type { TickerData } from "@/types/market";
-import "./TradingHeader.css";
+import styles from "./TradingHeader.module.css";
 
 const { Option } = Select;
 
@@ -107,9 +107,9 @@ export default function TradingHeader({
   };
 
   return (
-    <div className="trading-header-container">
+    <div className={styles.tradingHeaderContainer}>
       {/* Section 1: Symbol + Current Price */}
-      <div className="trading-header-section symbol-price">
+      <div className={`${styles.tradingHeaderSection} ${styles.symbolPrice}`}>
         <Select
           value={symbol}
           onChange={onSymbolChange}
@@ -124,38 +124,38 @@ export default function TradingHeader({
         </Select>
 
         {currentTicker ? (
-          <div className="current-price">
-            <div className="price-value" style={{ color: valueColor }}>
+          <div className={styles.currentPrice}>
+            <div className={styles.priceValue} style={{ color: valueColor }}>
               ${formatPrice(currentTicker.price)}
             </div>
-            <div className="price-change" style={{ color: valueColor }}>
+            <div className={styles.priceChange} style={{ color: valueColor }}>
               {isPositive ? <ArrowUpOutlined /> : <ArrowDownOutlined />}
               {currentTicker.priceChangePercent.toFixed(2)}%
             </div>
           </div>
         ) : (
-          <div className="current-price loading">Loading...</div>
+          <div className={`${styles.currentPrice} ${styles.loading}`}>Loading...</div>
         )}
       </div>
 
       {/* Section 2: 24h Statistics */}
       {currentTicker && (
-        <div className="trading-header-section stats">
-          <div className="stat-item">
-            <span className="stat-label">24h High</span>
-            <span className="stat-value">
+        <div className={`${styles.tradingHeaderSection} ${styles.stats}`}>
+          <div className={styles.statItem}>
+            <span className={styles.statLabel}>24h High</span>
+            <span className={styles.statValue}>
               ${formatPrice(currentTicker.high24h || 0)}
             </span>
           </div>
-          <div className="stat-item">
-            <span className="stat-label">24h Low</span>
-            <span className="stat-value">
+          <div className={styles.statItem}>
+            <span className={styles.statLabel}>24h Low</span>
+            <span className={styles.statValue}>
               ${formatPrice(currentTicker.low24h || 0)}
             </span>
           </div>
-          <div className="stat-item">
-            <span className="stat-label">24h Volume</span>
-            <span className="stat-value">
+          <div className={styles.statItem}>
+            <span className={styles.statLabel}>24h Volume</span>
+            <span className={styles.statValue}>
               {formatNumber(currentTicker.volume)} {symbol.split("/")[0]}
             </span>
           </div>
@@ -164,9 +164,9 @@ export default function TradingHeader({
 
       {/* Section 3: Multi-Exchange Price Comparison (Two Rows) */}
       {priceComparison && (
-        <div className="trading-header-section price-comparison">
-          <div className="price-comparison-left">
-            <div className="price-row">
+        <div className={`${styles.tradingHeaderSection} ${styles.priceComparison}`}>
+          <div className={styles.priceComparisonLeft}>
+            <div className={styles.priceRow}>
               <span className="label">High:</span>
               <Tag color="green">
                 {priceComparison.highest.exchange.toUpperCase()}
@@ -175,7 +175,7 @@ export default function TradingHeader({
                 ${formatPrice(priceComparison.highest.price)}
               </span>
             </div>
-            <div className="price-row">
+            <div className={styles.priceRow}>
               <span className="label">Low:</span>
               <Tag color="red">
                 {priceComparison.lowest.exchange.toUpperCase()}
@@ -185,13 +185,13 @@ export default function TradingHeader({
               </span>
             </div>
           </div>
-          <div className="price-comparison-right">
-            <div className="spread-left">Spread</div>
-            <div className="spread-right">
-              <div className="spread-value">
+          <div className={styles.priceComparisonRight}>
+            <div className={styles.spreadLeft}>Spread</div>
+            <div className={styles.spreadRight}>
+              <div className={styles.spreadValue}>
                 ${formatNumber(priceComparison.spread)}
               </div>
-              <div className="spread-percent">
+              <div className={styles.spreadPercent}>
                 {priceComparison.spreadPercent.toFixed(2)}%
               </div>
             </div>
@@ -200,7 +200,7 @@ export default function TradingHeader({
       )}
 
       {/* Section 4: Exchange Selector */}
-      <div className="trading-header-section exchange-selector">
+      <div className={`${styles.tradingHeaderSection} ${styles.exchangeSelector}`}>
         <Select
           value={exchange}
           onChange={onExchangeChange}
@@ -214,8 +214,8 @@ export default function TradingHeader({
           ))}
         </Select>
         <div
-          className={`connection-status ${
-            isConnected ? "connected" : "disconnected"
+          className={`${styles.connectionStatus} ${
+            isConnected ? styles.connected : styles.disconnected
           }`}
         >
           {isConnected ? "🟢 Live" : "🔴 Disconnected"}

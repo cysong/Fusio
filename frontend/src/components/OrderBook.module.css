@@ -1,4 +1,4 @@
-.orderbook-container {
+.orderbookContainer {
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -9,7 +9,7 @@
   overflow: hidden;
 }
 
-.orderbook-header {
+.orderbookHeader {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -22,13 +22,13 @@
   flex-shrink: 0;
 }
 
-.orderbook-timestamp {
+.orderbookTimestamp {
   font-size: 11px;
   color: #848e9c;
   font-weight: normal;
 }
 
-.orderbook-columns {
+.orderbookColumns {
   display: flex;
   justify-content: space-between;
   height: 32px;
@@ -40,16 +40,16 @@
   flex-shrink: 0;
 }
 
-.col-price {
+.colPrice {
   flex: 1;
 }
 
-.col-amount {
+.colAmount {
   text-align: right;
   flex: 1;
 }
 
-.orderbook-loading {
+.orderbookLoading {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -60,43 +60,42 @@
   text-align: center;
 }
 
-.orderbook-asks,
-.orderbook-bids {
+.orderbookAsks,
+.orderbookBids {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
 }
 
-.orderbook-asks {
+.orderbookAsks {
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
 }
 
-/* Hide scrollbar but keep functionality */
-.orderbook-asks::-webkit-scrollbar,
-.orderbook-bids::-webkit-scrollbar {
+.orderbookAsks::-webkit-scrollbar,
+.orderbookBids::-webkit-scrollbar {
   width: 4px;
 }
 
-.orderbook-asks::-webkit-scrollbar-track,
-.orderbook-bids::-webkit-scrollbar-track {
+.orderbookAsks::-webkit-scrollbar-track,
+.orderbookBids::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.orderbook-asks::-webkit-scrollbar-thumb,
-.orderbook-bids::-webkit-scrollbar-thumb {
+.orderbookAsks::-webkit-scrollbar-thumb,
+.orderbookBids::-webkit-scrollbar-thumb {
   background: #2b3139;
   border-radius: 2px;
 }
 
-.orderbook-asks::-webkit-scrollbar-thumb:hover,
-.orderbook-bids::-webkit-scrollbar-thumb:hover {
+.orderbookAsks::-webkit-scrollbar-thumb:hover,
+.orderbookBids::-webkit-scrollbar-thumb:hover {
   background: #3a4149;
 }
 
-.orderbook-row {
+.orderbookRow {
   position: relative;
   display: flex;
   justify-content: space-between;
@@ -107,11 +106,11 @@
   z-index: 1;
 }
 
-.orderbook-row:hover {
+.orderbookRow:hover {
   background: rgba(255, 255, 255, 0.05);
 }
 
-.orderbook-depth-bg {
+.orderbookDepthBg {
   position: absolute;
   top: 0;
   right: 0;
@@ -121,34 +120,34 @@
   transition: width 0.3s ease;
 }
 
-.ask-bg {
+.askBg {
   background: #f6465d;
 }
 
-.bid-bg {
+.bidBg {
   background: #0ecb81;
 }
 
-.orderbook-price {
+.orderbookPrice {
   flex: 1;
   font-weight: 500;
 }
 
-.ask-price {
+.askPrice {
   color: #f6465d;
 }
 
-.bid-price {
+.bidPrice {
   color: #0ecb81;
 }
 
-.orderbook-quantity {
+.orderbookQuantity {
   flex: 1;
   text-align: right;
   color: #eaecef;
 }
 
-.orderbook-spread {
+.orderbookSpread {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -161,53 +160,53 @@
   flex-shrink: 0;
 }
 
-.spread-price {
+.spreadPrice {
   font-size: 18px;
   font-weight: bold;
   color: #eaecef;
   font-family: "Roboto Mono", monospace;
 }
 
-.spread-details {
+.spreadDetails {
   display: flex;
   flex-direction: row;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 8px;
 }
 
-.spread-label {
+.spreadLabel {
   font-size: 12px;
   font-weight: 500;
   color: #6f7682;
   letter-spacing: 0.3px;
 }
 
-.spread-value {
+.spreadValue {
   font-size: 16px;
   font-weight: 600;
   color: #f0f4ff;
   font-family: "Roboto Mono", monospace;
   letter-spacing: 0.5px;
-  min-width: 60px;
-  text-align: right;
 }
 
-/* Responsive adjustments */
+.askRow {}
+.bidRow {}
+
 @media (max-width: 1200px) {
-  .orderbook-container {
+  .orderbookContainer {
     font-size: 11px;
   }
 
-  .orderbook-row {
+  .orderbookRow {
     padding: 3px 12px;
   }
 
-  .spread-price {
+  .spreadPrice {
     font-size: 16px;
   }
 
-  .spread-value {
+  .spreadValue {
     font-size: 12px;
   }
 }

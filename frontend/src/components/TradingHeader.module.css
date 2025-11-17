@@ -1,4 +1,4 @@
-.trading-header-container {
+.tradingHeaderContainer {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -10,36 +10,36 @@
   background: #0f1114;
 }
 
-.trading-header-section {
+.tradingHeaderSection {
   display: flex;
   align-items: center;
   gap: 12px;
 }
 
 /* Section 1: Symbol + Current Price */
-.symbol-price {
+.symbolPrice {
   flex-shrink: 0;
   min-width: 360px;
 }
 
-.current-price {
+.currentPrice {
   display: flex;
   align-items: baseline;
   gap: 8px;
 }
 
-.price-value {
+.priceValue {
   font-size: 28px;
   font-weight: bold;
   line-height: 1;
 }
 
-.price-change {
+.priceChange {
   font-size: 14px;
   font-weight: 500;
 }
 
-.current-price.loading {
+.currentPrice.loading {
   color: #999;
   font-size: 14px;
 }
@@ -50,18 +50,18 @@
   flex-shrink: 0;
 }
 
-.stat-item {
+.statItem {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-.stat-label {
+.statLabel {
   font-size: 12px;
   color: #6f7682;
 }
 
-.stat-value {
+.statValue {
   font-size: 14px;
   font-weight: 600;
   color: #eaecef;
@@ -69,7 +69,7 @@
 }
 
 /* Section 3: Price Comparison (Two rows layout) */
-.price-comparison {
+.priceComparison {
   display: flex;
   gap: 16px;
   align-items: center;
@@ -79,27 +79,27 @@
   color: #eaecef;
 }
 
-.price-comparison-left {
+.priceComparisonLeft {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-.price-row {
+.priceRow {
   display: flex;
   align-items: center;
   gap: 6px;
   justify-content: space-between;
-  minx-width: 250px;
+  min-width: 250px;
 }
 
-.price-row .label {
+.priceRow .label {
   color: #6f7682;
   font-weight: 500;
   min-width: 38px;
 }
 
-.price-row .value {
+.priceRow .value {
   color: #eaecef;
   font-weight: 600;
   text-align: right;
@@ -107,7 +107,7 @@
   font-family: "Roboto Mono", monospace;
 }
 
-.price-comparison-right {
+.priceComparisonRight {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -115,21 +115,21 @@
   border-left: 1px solid #1f252c;
 }
 
-.spread-left {
+.spreadLeft {
   color: #6f7682;
   font-weight: 500;
   font-size: 13px;
   flex-shrink: 0;
 }
 
-.spread-right {
+.spreadRight {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
   line-height: 1.2;
 }
 
-.spread-value {
+.spreadValue {
   font-size: 14px;
   color: #fa8c16;
   font-weight: 700;
@@ -138,50 +138,50 @@
   text-align: right;
 }
 
-.spread-percent {
+.spreadPercent {
   font-size: 14px;
   color: #fa8c16;
   font-weight: 600;
 }
 
 /* Section 4: Exchange Selector */
-.exchange-selector {
+.exchangeSelector {
   gap: 12px;
   flex-shrink: 0;
 }
 
-.connection-status {
+.connectionStatus {
   font-size: 13px;
   font-weight: 500;
   padding: 4px 8px;
   border-radius: 4px;
 }
 
-.connection-status.connected {
+.connectionStatus.connected {
   background-color: rgba(82, 196, 26, 0.15);
   color: #73d13d;
 }
 
-.connection-status.disconnected {
+.connectionStatus.disconnected {
   background-color: rgba(255, 77, 79, 0.15);
   color: #ff7875;
 }
 
 /* Responsive Design */
 @media (max-width: 1440px) {
-  .trading-header-container {
+  .tradingHeaderContainer {
     gap: 16px;
   }
 
-  .trading-header-section {
+  .tradingHeaderSection {
     gap: 8px;
   }
 
-  .price-value {
+  .priceValue {
     font-size: 24px;
   }
 
-  .price-comparison {
+  .priceComparison {
     font-size: 12px;
   }
 
@@ -192,7 +192,7 @@
 
 @media (max-width: 1200px) {
   /* Hide price comparison on smaller screens */
-  .price-comparison {
+  .priceComparison {
     display: none;
   }
 }
