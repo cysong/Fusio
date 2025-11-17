@@ -8,6 +8,7 @@ import { OrderStatus, OrderType } from './constants/order-status.enum';
 import { MockOrderExecutor } from './executors/mock-order.executor';
 import { RiskEngine } from './risk/risk-engine';
 import { OrderGateway } from './order.gateway';
+import { OrderJobService } from './order.job';
 
 @Injectable()
 export class OrderService {
@@ -17,6 +18,7 @@ export class OrderService {
     private readonly mockExecutor: MockOrderExecutor,
     private readonly riskEngine: RiskEngine,
     private readonly orderGateway: OrderGateway,
+    private readonly orderJobService: OrderJobService,
   ) { }
 
   async createOrder(dto: CreateOrderDto, userId: string): Promise<OrderEntity> {
@@ -41,20 +43,11 @@ export class OrderService {
       clientOrderId: dto.clientOrderId,
     });
 
-    await this.orderRepo.save(order);
-
-    const result = await this.mockExecutor.execute(order);
-
-    order.status = result.status;
-    order.filledQuantity = result.filledQuantity;
-    order.avgPrice = result.avgPrice;
-    order.fee = result.fee;
-    order.exchangeOrderId = result.exchangeOrderId;
-    order.errorCode = result.errorCode;
-    order.errorMessage = result.errorMessage;
-
     const saved = await this.orderRepo.save(order);
     this.orderGateway.broadcastUpdate(saved);
+
+    // enqueue async execution (mock)
+    this.orderJobService.enqueue(saved.id);
     return saved;
   }
 

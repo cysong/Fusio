@@ -6,10 +6,11 @@ import { OrderEntity } from './entities/order.entity';
 import { MockOrderExecutor } from './executors/mock-order.executor';
 import { RiskEngine } from './risk/risk-engine';
 import { OrderGateway } from './order.gateway';
+import { OrderJobService } from './order.job';
 
 @Module({
   imports: [TypeOrmModule.forFeature([OrderEntity])],
   controllers: [OrderController],
-  providers: [OrderService, MockOrderExecutor, RiskEngine, OrderGateway],
+  providers: [OrderService, MockOrderExecutor, RiskEngine, OrderGateway, OrderJobService],
 })
 export class OrderModule {}
