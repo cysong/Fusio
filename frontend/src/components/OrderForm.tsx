@@ -3,6 +3,7 @@ import { Button, Form, InputNumber, Segmented, Space, Tag, Typography, Divider, 
 import { CaretUpOutlined, CaretDownOutlined } from "@ant-design/icons";
 import { useOrderStore } from "@/stores/orderStore";
 import { useTradingStore } from "@/stores/tradingStore";
+import { getSymbolPrecision } from "@/config/symbolPrecision";
 
 const TYPE_OPTIONS = [
   { label: "Market", value: "market" as const },
@@ -29,6 +30,7 @@ export default function OrderForm() {
   const priceKey = useMemo(() => `${selectedExchange}:${selectedSymbol}`, [selectedExchange, selectedSymbol]);
   const ticker = useTradingStore((s) => s.tickers[priceKey]);
   const orderBook = useTradingStore((s) => s.orderBooks[priceKey]);
+  const precision = useMemo(() => getSymbolPrecision(selectedSymbol), [selectedSymbol]);
 
   const currentPrice = useMemo(() => {
     if (ticker?.price) return ticker.price;
@@ -106,27 +108,27 @@ export default function OrderForm() {
                     <Typography.Text style={{ color: "#EAECEF" }}>Price</Typography.Text>
                     {currentPrice && (
                       <Button size="small" onClick={() => setPrice(currentPrice)}>
-                        Use last {currentPrice}
+                        Use last {currentPrice.toFixed(precision.price)}
                       </Button>
                     )}
                   </Space>
                 }
               >
-                <Space.Compact block>
-                  <Button icon={<CaretDownOutlined />} onClick={() => setPrice((p) => (p && p > 0.0001 ? Number((p - 0.0001).toFixed(4)) : 0.0001))} />
-                  <InputNumber
-                    style={{ flex: 1 }}
-                    min={0}
-                    step={0.0001}
+                  <Space.Compact block>
+                    <Button icon={<CaretDownOutlined />} onClick={() => setPrice((p) => (p && p > 0.0001 ? Number((p - 0.0001).toFixed(4)) : 0.0001))} />
+                    <InputNumber
+                      style={{ flex: 1 }}
+                      min={0}
+                      step={0.0001}
                     value={price}
                     onChange={(v) => setPrice(typeof v === "number" ? v : undefined)}
                     placeholder="Enter price"
                   />
-                  <Button icon={<CaretUpOutlined />} onClick={() => setPrice((p) => Number(((p || 0) + 0.0001).toFixed(4)))} />
-                </Space.Compact>
-              </Form.Item>
-            </Form>
-          )}
+                    <Button icon={<CaretUpOutlined />} onClick={() => setPrice((p) => Number(((p || 0) + 0.0001).toFixed(4)))} />
+                  </Space.Compact>
+                </Form.Item>
+              </Form>
+            )}
 
           <Form layout="vertical" style={{ marginBottom: 4 }}>
             <Form.Item label={<Typography.Text style={{ color: "#EAECEF" }}>Quantity</Typography.Text>}>
