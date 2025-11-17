@@ -7,6 +7,8 @@ import KlineChart from "@/components/KlineChart";
 import { useOrderBook } from "@/hooks/useOrderBook";
 import { useKlineUpdates } from "@/hooks/useKlineUpdates";
 import { useTradingStore } from "@/stores/tradingStore";
+import OrderForm from "@/components/OrderForm";
+import OrderList from "@/components/OrderList";
 
 export default function TradingPage() {
   const { symbol } = useParams<{ symbol?: string }>();
@@ -81,16 +83,10 @@ export default function TradingPage() {
       }
       chart={<KlineChart />}
       tradingForm={
-        <div style={{ padding: 16 }}>
-          <h3>Trading Form</h3>
-          <p style={{ color: "#888" }}>Coming in Stage 5</p>
-        </div>
+        <OrderForm />
       }
       orderManagement={
-        <div>
-          <h3>Order Management</h3>
-          <p style={{ color: "#888" }}>Coming in Stage 5</p>
-        </div>
+        <OrderList />
       }
     />
   );

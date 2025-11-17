@@ -8,7 +8,7 @@ import { OrderStatus, OrderType } from './constants/order-status.enum';
 import { RiskEngine } from './risk/risk-engine';
 import { OrderGateway } from './order.gateway';
 import { InjectQueue } from '@nestjs/bull';
-import { Queue } from 'bull';
+import type { Queue } from 'bull';
 
 @Injectable()
 export class OrderService {
