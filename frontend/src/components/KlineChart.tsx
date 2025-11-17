@@ -352,8 +352,6 @@ export default function KlineChart() {
               : "rgba(246, 70, 93, 0.5)",
         }));
 
-      chartData.sort((a, b) => (a.time as number) - (b.time as number));
-
       const currentLength = chartData.length;
       const lastLength = lastDataLengthRef.current;
 

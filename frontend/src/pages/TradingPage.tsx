@@ -7,6 +7,7 @@ import KlineChart from "@/components/KlineChart";
 import { useOrderBook } from "@/hooks/useOrderBook";
 import { useKlineUpdates } from "@/hooks/useKlineUpdates";
 import { useTradingStore } from "@/stores/tradingStore";
+import { useKlineStore } from "@/stores/klineStore";
 import OrderForm from "@/components/OrderForm";
 import OrderList from "@/components/OrderList";
 
@@ -42,6 +43,8 @@ export default function TradingPage() {
   useEffect(() => {
     useTradingStore.getState().setSelectedSymbol(currentSymbol);
     useTradingStore.getState().setSelectedExchange(currentExchange);
+    // Clear cached kline data for previous pair to avoid heavy re-render
+    useKlineStore.getState().clearKlines(currentExchange, currentSymbol);
     console.log("Trading Page:", {
       symbol: currentSymbol,
       exchange: currentExchange,
