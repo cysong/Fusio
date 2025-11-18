@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - master
+    paths:
+      - "frontend/**"
+      - ".github/workflows/frontend-pages-deploy.yml"
   workflow_dispatch:
 
 env:
