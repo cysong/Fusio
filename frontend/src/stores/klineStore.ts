@@ -64,7 +64,7 @@ export const useKlineStore = create<KlineState>((set, get) => ({
         (async () => {
           try {
             const [base, quote] = symbol.split('/');
-            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+            const apiUrl = import.meta.env.VITE_API_BASE || 'http://localhost:4000';
             const url = `${apiUrl}/api/market/kline/${exchange}/${base}/${quote}`;
             const response = await axios.get(url, {
               params: { interval, limit: 500 },
@@ -119,7 +119,7 @@ export const useKlineStore = create<KlineState>((set, get) => ({
 
     try {
       const [base, quote] = symbol.split('/');
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+      const apiUrl = import.meta.env.VITE_API_BASE || 'http://localhost:4000';
       const url = `${apiUrl}/api/market/kline/${exchange}/${base}/${quote}`;
 
       console.log(`[KlineStore] Loading history for ${key} from ${url}`);
