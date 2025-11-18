@@ -101,7 +101,7 @@ Market Overview (默认页面)
 - 队列: Bull Queue
 - 实时通信: Socket.io
 - 认证: JWT + Passport
-- 监控: Prometheus + Winston
+- 监控: Prometheus + Grafana
 
 **前端**
 - 框架: Vite + React 18 + TypeScript

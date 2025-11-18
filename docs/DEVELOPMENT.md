@@ -616,3 +616,209 @@ case 'kraken':
   - 修复 OKX pong 响应处理（字符串 vs JSON）
   - 修复前端 ticker 覆盖问题（使用 exchange:symbol 组合 key）
   - 新增 API 端点：聚合查询、连接状态
+- **2025-11-15**: V0.4 完成 - 交易页面 OrderBook 实现 ✅
+  - **后端 OrderBook 适配器扩展**（阶段2，6-8h）
+    - 定义 OrderBookData 统一接口
+    - 扩展 BaseExchangeAdapter 支持 orderbook 订阅
+    - 实现 Binance OrderBook WebSocket（depth10@100ms）
+    - 实现 Bybit OrderBook WebSocket（orderbook.50）
+    - 实现 OKX OrderBook WebSocket（books5 频道）
+    - Redis 缓存 OrderBook 数据（10秒过期）
+    - Socket.io 广播 orderbook 事件
+  - **前端盘口组件实现**（阶段3，4-6h）
+    - 创建 OrderBook 组件，显示10档买卖深度
+    - 累计深度可视化（渐变背景色条）
+    - 实时价差显示（Spread）
+    - 点击价格填入交易表单功能
+    - 符号精度配置（symbolPrecision.ts）
+    - 集成到 TradingPage
+    - useOrderBook Hook 订阅实时数据
+- **2025-11-15**: V0.5 完成 - K线图表实现 ✅
+  - **后端 K线适配器扩展**（阶段4，6-8h）
+    - 定义 KlineData 统一接口（含isClosed关键字段）
+    - 扩展 BaseExchangeAdapter 支持 kline 订阅和历史数据获取
+    - 实现 Binance K线（REST API + WebSocket @kline_1m）
+    - 实现 Bybit K线（REST API + WebSocket kline.1）
+    - 实现 OKX K线（REST API + WebSocket candle1m）
+    - MarketService 处理K线数据流和缓存（TTL根据周期）
+    - REST API端点：`GET /api/market/kline/:exchange/:base/:quote`
+    - Gateway 广播 kline 事件到前端
+  - **前端K线图表组件**（阶段4，6-8h）
+    - 安装 lightweight-charts 库
+    - 创建 Zustand klineStore（增量更新逻辑）
+    - 实现 useKlineUpdates Hook（WebSocket订阅+节流500ms）
+    - 创建 KlineChart 组件（TradingView风格）
+    - 支持6个周期切换（1s/1m/15m/1h/1d/1w）
+    - 历史数据加载（REST API 500条）
+    - 实时增量更新（基于isClosed字段判断）
+    - 集成到 TradingPage
+  - **问题修复**
+    - 修复 TypeScript 编译错误（type-only imports，使用 `import type` 语法）
+    - 修复 lightweight-charts v5 API 兼容性问题
+      - 导入 `CandlestickSeries` 类型
+      - 使用正确的 v5 API：`chart.addSeries(CandlestickSeries, options)` 替代已废弃的 `addCandlestickSeries`
+    - 修复 socket null 检查问题（添加提前返回）
+    - 修复 Time 类型断言（显式 `as Time` 转换）
+    - 安装缺失依赖 lodash 和 @types/lodash（用于节流函数）
+    - 修复 OrderBook spread 计算逻辑（只有当 bid 和 ask 都存在时才计算 spread）
+    - 修复 K线 API 端口错误（从硬编码的 3000 改为使用 VITE_API_URL 环境变量，默认 4000）
+    - 修复 K线数据类型保护（添加 Array.isArray 检查，防止 .map is not a function 错误）
+      - KlineChart 组件中使用 Array.isArray 检查
+      - klineStore 中确保 API 响应数据始终为数组
+      - 错误情况下设置空数组而非 undefined
+    - 优化 K线加载日志
+      - 移除不必要的"No history loaded"警告（正常情况下会收到其他交易所的数据）
+      - 添加详细的加载日志和错误信息
+      - 不抛出异常，允许组件继续渲染
+    - 修复 K线 API 双层嵌套问题
+      - 问题：TransformInterceptor 自动包装响应，导致 `{success, data: {success, data: [...]}}` 双层嵌套
+      - 修复：Controller 直接返回 KlineData[] 数组，让拦截器统一包装
+      - 使用 throw Error 处理验证错误，而不是返回错误对象
+    - 修复 React 无限循环问题（Maximum update depth exceeded）
+      - 问题：useEffect 依赖了 Zustand store 函数，导致每次状态更新都触发 effect 重新运行
+      - 修复：使用 `store.getState()` 直接访问函数，避免依赖问题
+      - 影响文件：useOrderBook.ts, useKlineUpdates.ts, TradingPage.tsx
+      - 依赖数组只包含实际数据（如 currentSymbol），不包含 store 函数
+    - 重构 K线多周期架构（方案2：单连接多订阅）✅
+      - **问题**：adapter 只有一个 `klineWs` 变量，循环订阅导致 WebSocket 引用覆盖
+      - **错误**：`Error: WebSocket is not open: readyState 0 (CONNECTING)`
+      - **解决方案**：实施单连接多订阅架构
+        - **BaseExchangeAdapter**: 添加 `klineSubscriptions: Set<string>`, `waitForKlineConnection()`, `isKlineIntervalSubscribed()`, `markKlineIntervalSubscribed()`
+        - **Binance**: 使用combined stream (`stream?streams=btcusdt@kline_1s/btcusdt@kline_1m/...`)
+        - **Bybit**: 动态订阅 (`op: 'subscribe', args: ['kline.1.BTCUSDT']`)
+        - **OKX**: 动态订阅 (`op: 'subscribe', args: [{channel: 'candle1s', instId: 'BTC-USDT'}]`)
+      - **结果**：所有 6 个周期 (1s/1m/15m/1h/1d/1w) 均可实时更新
+      - **WebSocket 连接数**：每个交易对 3 个连接（Ticker + OrderBook + Kline）
+      - **详细文档**：`docs/KLINE-MULTI-INTERVAL-ARCHITECTURE-ISSUE.md`
+    - 修复 K线数据重复加载问题
+      - **问题**：刷新页面时加载了 binance 和 bybit 两个交易所的 K线数据
+      - **原因**：tradingStore 初始值硬编码为 'binance'，导致 KlineChart 先加载默认值，再加载 URL 参数
+      - **修复**：在 TradingPage 组件渲染前同步设置 store，确保子组件读取正确的初始值
+      - **实现**：在组件函数体开始处立即检查并更新 store（使用条件判断避免不必要的更新）
+    - 优化 K线周期配置（方案2B：全时间维度）✅
+      - **问题**：Bybit 不支持 1s 周期，导致选择 1s 时实际显示 1m 数据
+      - **原因**：Bybit 的 '1' 表示 1 分钟，而代码将 '1s' 和 '1m' 都映射到 '1'，导致冲突
+      - **解决方案**：采用方案2B - 选择所有交易所都支持的7个周期
+        - **新周期列表**：`['1m', '15m', '1h', '4h', '1d', '1w', '1M']`
+        - **覆盖范围**：分钟级 → 月级，全时间维度覆盖
+        - **兼容性**：Binance ✅ | Bybit ✅ | OKX ✅（100%兼容）
+      - **修改内容**：
+        - 前端 KlineChart.tsx：INTERVALS 更新为 7 个周期
+        - 后端 MarketService：supportedIntervals 更新为 7 个周期
+        - Binance Adapter：移除 1s，添加 4h 和 1M
+        - Bybit Adapter：移除 1s，添加 4h 和 1M
+        - OKX Adapter：移除 1s，添加 4h
+      - **参考文档**：`docs/KLINE-INTERVAL-COMPARISON.md`
+    - 重构 K线周期映射为配置化（架构优化）✅
+      - **问题**：周期映射硬编码在 Adapter 代码中，维护困难
+      - **优化**：将映射配置提取到 `ExchangeConfig` 配置文件
+      - **修改内容**：
+        - `ExchangeConfig` 接口添加 `intervalMapping` 字段
+        - `exchanges.config.ts` 为三个交易所添加映射配置
+        - Binance/Bybit/OKX Adapter 简化为直接读取配置
+      - **优势**：
+        - ✅ 配置集中管理，一目了然
+        - ✅ 添加新交易所只需修改配置文件
+        - ✅ 修改周期映射无需改动代码
+        - ✅ 代码更简洁（每个 adapter 减少 20+ 行）
+      - **代码对比**：
+        ```typescript
+        // ❌ 优化前（硬编码）
+        private mapInterval(interval: string): string {
+          const intervalMap: Record<string, string> = {
+            '1m': '1',
+            '15m': '15',
+            // ... 7 行配置
+          };
+          return intervalMap[interval] || '1';
+        }
+        
+        // ✅ 优化后（配置化）
+        private mapInterval(interval: string): string {
+          return this.config.intervalMapping.toExchange[interval] || '1m';
+        }
+        ```
+    - 统一支持的周期列表配置 ✅
+      - **问题**：`market.controller.ts` 和 `market.service.ts` 中支持的周期列表不一致且硬编码
+        - Controller: `['1s', '1m', '15m', '1h', '1d', '1w']` ❌ 旧配置
+        - Service: `['1m', '15m', '1h', '4h', '1d', '1w', '1M']` ✅ 新配置
+      - **优化**：在 `exchanges.config.ts` 添加全局 `SUPPORTED_INTERVALS` 配置
+      - **修改内容**：
+        - 定义全局常量：`export const SUPPORTED_INTERVALS = ['1m', '15m', '1h', '4h', '1d', '1w', '1M']`
+        - Controller 和 Service 都从配置读取
+        - 确保全系统使用统一的周期列表
+      - **优势**：
+        - ✅ 单一数据源（Single Source of Truth）
+        - ✅ Controller 和 Service 自动保持一致
+        - ✅ 修改周期只需改一处配置
+        - ✅ 类型安全（使用 `as const` 和类型推导）
+    - 完整配置化重构（所有硬编码配置项）✅
+      - **问题**：多处硬编码配置分散在代码中，维护困难
+      - **优化**：将所有配置项统一放入 `exchanges.config.ts`
+      - **配置项清单**：
+        1. **K线缓存 TTL 映射** - `CACHE_TTL_CONFIG.kline`
+           - 包含所有7个周期的 TTL 配置
+           - 补充了缺失的 `4h` (600秒) 和 `1M` (7200秒)
+        2. **Ticker 缓存 TTL** - `CACHE_TTL_CONFIG.ticker` (10秒)
+        3. **OrderBook 缓存 TTL** - `CACHE_TTL_CONFIG.orderbook` (10秒)
+        4. **K线默认周期** - `KLINE_CONFIG.defaultInterval` ('1m')
+        5. **K线 Limit 默认值** - `KLINE_CONFIG.defaultLimit` (500)
+        6. **K线 Limit 范围** - `KLINE_CONFIG.minLimit` (1) / `maxLimit` (1000)
+      - **修改文件**：
+        - `exchanges.config.ts`: 添加 `CACHE_TTL_CONFIG` 和 `KLINE_CONFIG`
+        - `market.service.ts`: 使用配置替换所有硬编码 TTL
+        - `market.controller.ts`: 使用配置替换硬编码 limit 和默认值
+      - **优势**：
+        - ✅ 所有配置集中在一个文件，一目了然
+        - ✅ 修改配置无需改动代码
+        - ✅ 配置与代码分离，符合最佳实践
+        - ✅ 类型安全，编译期检查
+      - **配置结构**：
+        ```typescript
+        export const CACHE_TTL_CONFIG = {
+          ticker: 10,
+          orderbook: 10,
+          kline: { '1m': 60, '15m': 300, '1h': 300, '4h': 600, '1d': 1800, '1w': 3600, '1M': 7200 },
+          default: 300,
+        };
+        export const KLINE_CONFIG = {
+          defaultInterval: '1m',
+          defaultLimit: 500,
+          minLimit: 1,
+          maxLimit: 1000,
+        };
+        ```
+    - 修复前端K线缓存过期检查问题 ✅
+      - **问题1**：K线缓存无过期检查，切换周期时可能使用过时数据
+      - **问题2**：缓存命中检查太简单，只检查长度不检查时间戳
+      - **解决方案**：采用方案B - 将时间戳嵌入数据结构
+      - **修改内容**：
+        1. **创建前端缓存配置** - `frontend/src/config/cache.config.ts`
+           - 与后端 `CACHE_TTL_CONFIG` 保持一致
+           - 提供 `getKlineCacheTTL()` 函数根据周期获取 TTL
+        2. **重构 klineStore 数据结构**
+           - 新增 `CachedKlineData` 接口：`{ data: KlineData[], timestamp: number }`
+           - `klines` 类型改为 `Record<string, CachedKlineData>`
+        3. **改进 loadHistory 缓存检查**
+           - 检查数据存在且时间戳有效
+           - 计算缓存年龄并与 TTL 比较
+           - 过期后自动重新加载
+        4. **更新 updateKline**
+           - 适配新数据结构
+           - WebSocket 更新时同时更新时间戳（数据是新鲜的）
+        5. **修改 KlineChart 组件**
+           - 适配新数据结构：`cached?.data` 访问
+      - **缓存过期时间**（与后端一致）：
+        - `1m`: 60秒（1分钟）
+        - `15m`: 300秒（5分钟）
+        - `1h`: 300秒（5分钟）
+        - `4h`: 600秒（10分钟）
+        - `1d`: 1800秒（30分钟）
+        - `1w`: 3600秒（1小时）
+        - `1M`: 7200秒（2小时）
+        - 默认: 300秒（5分钟）
+      - **效果**：
+        - ✅ 切换周期时，如果缓存未过期，使用缓存（避免重复请求）
+        - ✅ 如果缓存过期，自动重新加载最新数据
+        - ✅ WebSocket 实时更新时，时间戳自动刷新（保持缓存有效）
+        - ✅ 根据周期设置不同的过期时间，更合理
