@@ -51,8 +51,12 @@ pnpm run dev
 ```
 App available at `http://localhost:5173`
 
+### Live Demo
+- Frontend: `https://fusio-1fu.pages.dev/`
+- Backend: deployed on Fly.io (`https://fusio-my09ug.fly.dev`, API under `/api`)
+
 ### Usage
-1. Open `http://localhost:5173`
+1. Open home page
 2. Click "Register" to create an account
 3. Use an email and a password (>=8 chars, upper/lowercase, numbers)
 4. After registration you're auto-logged in and redirected to the dashboard
@@ -75,3 +79,12 @@ See [DESIGN.md](./DESIGN.md) for the full roadmap.
 
 ## License
 For technical demonstration purposes only.
+
+## CI/CD & Deployment
+- GitHub Actions
+  - Backend deploy: `.github/workflows/backend-fly-deploy.yml` (Fly.io, builds from `fly.toml`/`backend/Dockerfile`)
+  - Frontend deploy: `.github/workflows/frontend-pages-deploy.yml` (Cloudflare Pages)
+- Environment / Secrets (examples)
+  - Fly: `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET`, `CORS_ORIGIN`, `PORT=3000` (set via Fly secrets)
+  - Frontend build: `VITE_API_BASE` pointing to the backend origin (e.g., `https://fusio-my09ug.fly.dev`)
+- Health check: `/api/health` (Fly health check path aligned)
