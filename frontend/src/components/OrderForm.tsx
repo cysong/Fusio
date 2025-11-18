@@ -43,7 +43,7 @@ export default function OrderForm() {
     return undefined;
   }, [ticker, orderBook]);
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (submitSide: "buy" | "sell") => {
     setError(undefined);
     if (!selectedSymbol || !selectedExchange) {
       setError("Select symbol and exchange");
@@ -61,7 +61,7 @@ export default function OrderForm() {
     await submit({
       exchange: selectedExchange,
       symbol: selectedSymbol,
-      side,
+      side: submitSide,
       type,
       quantity,
       price: type === "limit" ? price : undefined,
@@ -169,7 +169,7 @@ export default function OrderForm() {
             style={{ background: SIDE_COLOR.buy, borderColor: SIDE_COLOR.buy, flex: 1, textAlign: "center" }}
             onClick={() => {
               setSide("buy");
-              void handleSubmit();
+              void handleSubmit("buy");
             }}
           >
             BUY
@@ -181,7 +181,7 @@ export default function OrderForm() {
             style={{ background: SIDE_COLOR.sell, borderColor: SIDE_COLOR.sell, flex: 1, textAlign: "center" }}
             onClick={() => {
               setSide("sell");
-              void handleSubmit();
+              void handleSubmit("sell");
             }}
           >
             SELL
