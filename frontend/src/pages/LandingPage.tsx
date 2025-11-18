@@ -37,6 +37,8 @@ export default function LandingPage() {
   const [registerModalVisible, setRegisterModalVisible] = useState(false);
   const [loginForm] = Form.useForm();
   const [registerForm] = Form.useForm();
+  const defaultEmail = "user@example.com";
+  const defaultPassword = "ChangeMe123!";
 
   // Login mutation
   const loginMutation = useMutation({
@@ -454,7 +456,12 @@ export default function LandingPage() {
             onClose={() => loginMutation.reset()}
           />
         )}
-        <Form form={loginForm} onFinish={handleLogin} layout="vertical">
+        <Form
+          form={loginForm}
+          onFinish={handleLogin}
+          layout="vertical"
+          initialValues={{ email: defaultEmail, password: defaultPassword }}
+        >
           <Form.Item
             name="email"
             rules={[
@@ -462,24 +469,14 @@ export default function LandingPage() {
               { type: "email", message: "Please enter a valid email address" },
             ]}
           >
-            <Input
-              prefix={<UserOutlined />}
-              placeholder="Email"
-              size="large"
-              value="user@example.com"
-            />
+            <Input prefix={<UserOutlined />} placeholder="Email" size="large" />
           </Form.Item>
 
           <Form.Item
             name="password"
             rules={[{ required: true, message: "Please enter your password" }]}
           >
-            <Input.Password
-              prefix={<LockOutlined />}
-              placeholder="Password"
-              size="large"
-              value="ChangeMe123!"
-            />
+            <Input.Password prefix={<LockOutlined />} placeholder="Password" size="large" />
           </Form.Item>
 
           <Form.Item>
