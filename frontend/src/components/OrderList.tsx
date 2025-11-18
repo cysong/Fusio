@@ -105,10 +105,13 @@ export default function OrderList() {
       title: "Action",
       key: "action",
       render: (_, record) => {
-        const cancellable = ["submitted", "partially_filled"].includes(record.status);
+        const cancellable = ["submitted", "partially_filled", "pending"].includes(
+          (record.status || "").toLowerCase()
+        );
+        const isRejected = (record.status || "").toLowerCase() === "rejected";
         return (
           <Space>
-            {cancellable && (
+            {cancellable && !isRejected && (
               <Button danger size="small" onClick={() => cancel(record.id)}>
                 Cancel
               </Button>
