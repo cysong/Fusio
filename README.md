@@ -1,5 +1,8 @@
 # Fusio - Multi-Exchange Aggregated Trading Platform
 
+![Backend Deploy](https://github.com/cysong/Fusio/actions/workflows/backend-fly-deploy.yml/badge.svg?branch=master)
+![Frontend Deploy](https://github.com/cysong/Fusio/actions/workflows/frontend-pages-deploy.yml/badge.svg?branch=master)
+
 > Real-time crypto market aggregation and demo trading experience.
 
 Fusio is a real-time, multi-exchange crypto aggregation platform that provides a unified market dashboard and simulated trading experience.
