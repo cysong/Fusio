@@ -46,7 +46,7 @@ export class AuthService {
     return this.generateTokenResponse(user);
   }
 
-  async login(loginDto: LoginDto): Promise<AuthResponseDto> {
+  async login(loginDto: LoginDto, ip?: string): Promise<AuthResponseDto> {
     // Find user
     const user = await this.userRepository.findOne({
       where: { email: loginDto.email },
@@ -71,10 +71,14 @@ export class AuthService {
       throw new UnauthorizedException('Account has been disabled');
     }
 
-    // Update last login time
+    // Update last login time and IP
+    const now = new Date();
     await this.userRepository.update(user.id, {
-      lastLoginAt: new Date(),
+      lastLoginAt: now,
+      lastLoginIp: ip,
     });
+    user.lastLoginAt = now;
+    user.lastLoginIp = ip;
 
     return this.generateTokenResponse(user);
   }
@@ -110,6 +114,8 @@ export class AuthService {
         balanceUsdt: Number(user.balanceUsdt),
         avatar: user.avatar,
         createdAt: user.createdAt,
+        lastLoginAt: user.lastLoginAt,
+        lastLoginIp: user.lastLoginIp,
       },
     };
   }

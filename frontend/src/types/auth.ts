@@ -6,6 +6,8 @@ export interface User {
   balanceUsdt: number;
   avatar?: string;
   createdAt: string;
+  lastLoginAt?: string;
+  lastLoginIp?: string;
 }
 
 export interface AuthResponse {

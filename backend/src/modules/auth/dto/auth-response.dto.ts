@@ -8,6 +8,8 @@ export class UserResponseDto {
   balanceUsdt: number;
   avatar?: string;
   createdAt: Date;
+  lastLoginAt?: Date;
+  lastLoginIp?: string;
 }
 
 export class AuthResponseDto {
