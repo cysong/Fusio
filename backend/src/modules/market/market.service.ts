@@ -25,6 +25,8 @@ export class MarketService implements OnModuleInit, OnModuleDestroy {
 
   // Store all adapter instances: Map<'exchange:symbol', adapter>
   private adapters: Map<string, BaseExchangeAdapter> = new Map();
+  // In-memory cache for latest tickers
+  private tickerCache: Map<string, TickerData> = new Map();
 
   constructor(
     @InjectRedis() private readonly redis: Redis,
@@ -144,9 +146,9 @@ export class MarketService implements OnModuleInit, OnModuleDestroy {
    */
   private async handleTickerUpdate(data: TickerData): Promise<void> {
     try {
-      // Redis cache key: ticker:exchange:symbol
-      const cacheKey = `ticker:${data.exchange}:${data.symbol}`;
-      await this.redis.setex(cacheKey, CACHE_TTL_CONFIG.ticker, JSON.stringify(data));
+      // In-memory cache for latest ticker
+      const cacheKey = `${data.exchange}:${data.symbol}`;
+      this.tickerCache.set(cacheKey, data);
 
       // Broadcast to WebSocket clients
       this.marketGateway.broadcastTicker(data);
@@ -167,8 +169,8 @@ export class MarketService implements OnModuleInit, OnModuleDestroy {
   private async handleOrderBookUpdate(data: OrderBookData): Promise<void> {
     try {
       // Redis cache key: orderbook:exchange:symbol
-      const cacheKey = `orderbook:${data.exchange}:${data.symbol}`;
-      await this.redis.setex(cacheKey, CACHE_TTL_CONFIG.orderbook, JSON.stringify(data));
+      // const cacheKey = `orderbook:${data.exchange}:${data.symbol}`;
+      // await this.redis.setex(cacheKey, CACHE_TTL_CONFIG.orderbook, JSON.stringify(data));
 
       // Broadcast to WebSocket clients
       this.marketGateway.broadcastOrderBook(data);
@@ -193,9 +195,9 @@ export class MarketService implements OnModuleInit, OnModuleDestroy {
   private async handleKlineUpdate(data: KlineData): Promise<void> {
     try {
       // Redis cache key: kline:exchange:symbol:interval (latest kline)
-      const cacheKey = `kline:${data.exchange}:${data.symbol}:${data.interval}:latest`;
-      const ttl = this.getKlineCacheTTL(data.interval);
-      await this.redis.setex(cacheKey, ttl, JSON.stringify(data));
+      // const cacheKey = `kline:${data.exchange}:${data.symbol}:${data.interval}:latest`;
+      // const ttl = this.getKlineCacheTTL(data.interval);
+      // await this.redis.setex(cacheKey, ttl, JSON.stringify(data));
 
       // Broadcast to WebSocket clients
       this.marketGateway.broadcastKline(data);
@@ -221,19 +223,8 @@ export class MarketService implements OnModuleInit, OnModuleDestroy {
    * Get latest ticker data
    */
   async getLatestTicker(exchange: string, symbol: string): Promise<TickerData | null> {
-    try {
-      const cacheKey = `ticker:${exchange}:${symbol}`;
-      const cached = await this.redis.get(cacheKey);
-
-      if (!cached) {
-        return null;
-      }
-
-      return JSON.parse(cached);
-    } catch (error) {
-      this.logger.error(`Failed to get ticker from cache: ${error.message}`);
-      return null;
-    }
+    const cacheKey = `${exchange}:${symbol}`;
+    return this.tickerCache.get(cacheKey) || null;
   }
 
   /**
@@ -244,7 +235,8 @@ export class MarketService implements OnModuleInit, OnModuleDestroy {
     const results: TickerData[] = [];
 
     for (const exchange of enabledExchanges) {
-      const ticker = await this.getLatestTicker(exchange.id, symbol);
+      const cacheKey = `${exchange.id}:${symbol}`;
+      const ticker = this.tickerCache.get(cacheKey);
       if (ticker) {
         results.push(ticker);
       }
