@@ -9,6 +9,7 @@ import { MarketModule } from './modules/market/market.module';
 import { getDatabaseConfig } from './config/database.config';
 import { OrderModule } from './modules/order/order.module';
 import { BullModule } from '@nestjs/bull';
+import { BadRequestException } from '@nestjs/common';
 
 @Module({
   imports: [
@@ -18,14 +19,21 @@ import { BullModule } from '@nestjs/bull';
     }),
     TypeOrmModule.forRoot(getDatabaseConfig()),
     BullModule.forRoot({
-      redis: {
-        host: process.env.REDIS_HOST || 'localhost',
-        port: parseInt(process.env.REDIS_PORT || '6379', 10),
-      },
+      redis: (() => {
+        if (!process.env.REDIS_URL) {
+          throw new BadRequestException('REDIS_URL is required for BullModule');
+        }
+        return process.env.REDIS_URL;
+      })(),
     }),
     RedisModule.forRoot({
       type: 'single',
-      url: `redis://${process.env.REDIS_HOST || 'localhost'}:${process.env.REDIS_PORT || 6379}`,
+      url: (() => {
+        if (!process.env.REDIS_URL) {
+          throw new BadRequestException('REDIS_URL is required for RedisModule');
+        }
+        return process.env.REDIS_URL;
+      })(),
     }),
     AuthModule,
     MarketModule,
