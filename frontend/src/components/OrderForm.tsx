@@ -19,7 +19,6 @@ export default function OrderForm() {
   const { selectedExchange, selectedSymbol } = useTradingStore();
   const { submit, creating, error, setError } = useOrderStore();
 
-  const [side, setSide] = useState<"buy" | "sell">("buy");
   const [type, setType] = useState<"market" | "limit">("limit");
   const [price, setPrice] = useState<number | undefined>(undefined);
   const [quantity, setQuantity] = useState<number | undefined>(undefined);
@@ -168,7 +167,6 @@ export default function OrderForm() {
             loading={creating}
             style={{ background: SIDE_COLOR.buy, borderColor: SIDE_COLOR.buy, flex: 1, textAlign: "center" }}
             onClick={() => {
-              setSide("buy");
               void handleSubmit("buy");
             }}
           >
@@ -180,7 +178,6 @@ export default function OrderForm() {
             loading={creating}
             style={{ background: SIDE_COLOR.sell, borderColor: SIDE_COLOR.sell, flex: 1, textAlign: "center" }}
             onClick={() => {
-              setSide("sell");
               void handleSubmit("sell");
             }}
           >
