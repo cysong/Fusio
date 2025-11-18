@@ -137,14 +137,6 @@ export default function LandingPage() {
                 <Button size="large" onClick={() => setLoginModalVisible(true)}>
                   Login
                 </Button>
-                <Button
-                  type="primary"
-                  size="large"
-                  icon={<RocketOutlined />}
-                  onClick={() => setRegisterModalVisible(true)}
-                >
-                  Try It Now
-                </Button>
               </>
             )}
           </Space>
@@ -209,20 +201,6 @@ export default function LandingPage() {
                 }}
               >
                 Try It Now
-              </Button>
-              <Button
-                size="large"
-                onClick={() => setLoginModalVisible(true)}
-                style={{
-                  height: 48,
-                  fontSize: 18,
-                  padding: "0 32px",
-                  background: "rgba(255,255,255,0.2)",
-                  color: "#fff",
-                  border: "1px solid rgba(255,255,255,0.5)",
-                }}
-              >
-                Login
               </Button>
             </Space>
           )}
