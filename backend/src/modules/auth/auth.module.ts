@@ -7,6 +7,7 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { User } from '../user/entities/user.entity';
+import { DefaultUsersSeed } from './default-users.seed';
 
 @Module({
   imports: [
@@ -24,7 +25,7 @@ import { User } from '../user/entities/user.entity';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
+  providers: [AuthService, JwtStrategy, DefaultUsersSeed],
   exports: [AuthService],
 })
 export class AuthModule {}

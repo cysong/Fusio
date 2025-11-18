@@ -462,7 +462,12 @@ export default function LandingPage() {
               { type: "email", message: "Please enter a valid email address" },
             ]}
           >
-            <Input prefix={<UserOutlined />} placeholder="Email" size="large" />
+            <Input
+              prefix={<UserOutlined />}
+              placeholder="Email"
+              size="large"
+              value="user@example.com"
+            />
           </Form.Item>
 
           <Form.Item
@@ -473,6 +478,7 @@ export default function LandingPage() {
               prefix={<LockOutlined />}
               placeholder="Password"
               size="large"
+              value="ChangeMe123!"
             />
           </Form.Item>
 
