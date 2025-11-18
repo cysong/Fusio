@@ -7,6 +7,9 @@ import { TransformInterceptor } from './common/interceptors/transform.intercepto
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  // 信任代理，确保能获取真实客户端 IP（如经 Cloudflare/Fly 代理）
+  app.set('trust proxy', true);
+
   // 全局 CORS 配置
   app.enableCors({
     origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
