@@ -8,7 +8,11 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   // 信任代理，确保能获取真实客户端 IP（如经 Cloudflare/Fly 代理）
-  app.set('trust proxy', true);
+  const httpAdapter = app.getHttpAdapter();
+  const instance = httpAdapter.getInstance && httpAdapter.getInstance();
+  if (instance?.set) {
+    instance.set('trust proxy', true);
+  }
 
   // 全局 CORS 配置
   app.enableCors({
