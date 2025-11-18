@@ -24,6 +24,9 @@ jobs:
           node-version: "22"
           cache: "pnpm"
 
+      - name: Install pnpm
+        run: corepack prepare pnpm@latest --activate
+
       - name: Enable Corepack (pnpm)
         run: corepack enable
 
