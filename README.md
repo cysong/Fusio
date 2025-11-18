@@ -13,15 +13,12 @@ Fusio is a real-time, multi-exchange crypto aggregation platform that provides a
 - [DEVELOPMENT.md](./docs/DEVELOPMENT.md): Developer guide.
 
 ## Features
-- **User Authentication**: Email registration/login, password strength validation (>=8 chars with upper/lowercase and numbers), JWT auth, auto-seeded demo balance (10,000 USDT).
-- **Profile**: Shows role, registration time, and last login time/IP.
-- **Real-Time Market Data**: Live prices (BTC/USDT, ETH/USDT), price change color cues, 24h change %, WebSocket streaming, connection status indicator.
-- **Multi-Exchange Aggregation**: Unified data from Binance, Bybit, and OKX with normalized symbols and pricing.
-- **Order Book & Ticker View**: Consolidated order book and ticker snapshots to visualize depth and price action.
-- **Simulated Trading**: Paper-trade flows powered by the demo balance; balances update on fills.
-- **Order History**: Inspect simulated orders and executions for auditability.
-- **Risk Controls**: Balance checks, order limits, and circuit breaker hooks to prevent abnormal flows.
-- **Monitoring & Observability**: Prometheus metrics and Grafana dashboards for service health and data latency.
+- **Real-time multi-exchange aggregation**: Binance/Bybit/OKX WebSocket adapters with normalized tickers, best-price detection, spread display, and consolidated order book/ticker snapshots.
+- **Trading demo with safeguards**: JWT auth, seeded 10k USDT demo balance, simulated order execution with balance checks, order limits, circuit-breaker hooks, and audit-ready order history.
+- **Modular NestJS backend**: Market/trading/risk modules, exchange adapter layer, Socket.io gateway for live pushes, Redis caching, and TypeORM (SQLite/PostgreSQL) persistence.
+- **Observability and ops**: Prometheus/Grafana metrics and dashboards, health checks, CI/CD to Fly.io (backend) and Cloudflare Pages (frontend), guard/risk patterns in the request flow.
+- **Frontend UX for realtime data**: React/Vite + Ant Design with connection status indicators, live price color cues, and grouped price comparisons across venues.
+- **Scalability path**: Adapter pattern to add venues, Bull/Redis for async processing, and roadmap items for smart order routing plus deeper risk/monitoring controls.
 
 ## Quick Start
 ### Requirements
