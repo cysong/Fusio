@@ -337,9 +337,9 @@ export default function LandingPage() {
           <Title level={2} style={{ textAlign: "center", marginBottom: 48 }}>
             Development Roadmap
           </Title>
-          <Row gutter={[16, 16]}>
+          <Row gutter={[16, 16]} align="stretch">
             <Col xs={24} md={12}>
-              <Card>
+              <Card style={{ height: "100%" }}>
                 <Space
                   direction="vertical"
                   size="small"
@@ -364,7 +364,7 @@ export default function LandingPage() {
               </Card>
             </Col>
             <Col xs={24} md={12}>
-              <Card>
+              <Card style={{ height: "100%" }}>
                 <Space
                   direction="vertical"
                   size="small"
