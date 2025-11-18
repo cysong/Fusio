@@ -3,6 +3,7 @@ import { Form, Select, Input, Button, Table, Tag, Space, Typography } from "antd
 import type { ColumnsType, TablePaginationConfig } from "antd/es/table";
 import { listOrders } from "@/api/orders";
 import type { Order } from "@/types/order";
+import { useOrderUpdates } from "@/hooks/useOrderUpdates";
 
 const STATUS_COLOR: Record<string, string> = {
   submitted: "blue",
@@ -22,6 +23,16 @@ export default function OrdersHistory() {
   const [pagination, setPagination] = useState<TablePaginationConfig>({
     current: 1,
     pageSize: 20,
+  });
+
+  useOrderUpdates((order) => {
+    setOrders((prev) => {
+      const idx = prev.findIndex((o) => o.id === order.id);
+      if (idx === -1) return prev;
+      const copy = [...prev];
+      copy[idx] = order;
+      return copy;
+    });
   });
 
   const fetchData = async (page = 1, pageSize = 20) => {

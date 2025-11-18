@@ -39,9 +39,9 @@ export const useOrderStore = create<OrderState>((set, get) => ({
     set({ creating: true, error: undefined });
     try {
       const order = await createOrder(payload);
-      // optimistic insert
-      const existing = get().orders;
-      set({ orders: [order, ...existing], creating: false });
+      // insert/update with de-duplication
+      get().upsert(order);
+      set({ creating: false });
     } catch (err: any) {
       set({ creating: false, error: err?.message || 'Failed to create order' });
     }

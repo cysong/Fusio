@@ -1,9 +1,13 @@
 import {
   WebSocketGateway,
   WebSocketServer,
+  SubscribeMessage,
+  MessageBody,
+  ConnectedSocket,
 } from '@nestjs/websockets';
 import { Server } from 'socket.io';
 import { OrderEntity } from './entities/order.entity';
+import { Logger } from '@nestjs/common';
 
 @WebSocketGateway({
   namespace: '/orders',
@@ -13,8 +17,24 @@ import { OrderEntity } from './entities/order.entity';
   },
 })
 export class OrderGateway {
+  private readonly logger = new Logger(OrderGateway.name);
+
   @WebSocketServer()
   server: Server;
+
+  @SubscribeMessage('join')
+  handleJoin(
+    @MessageBody() data: { room?: string; userId?: string },
+    @ConnectedSocket() client: any,
+  ) {
+    const room = data?.room || (data?.userId ? `user:${data.userId}` : null);
+    if (!room) {
+      this.logger.warn(`Join event missing room/userId from client ${client.id}`);
+      return;
+    }
+    client.join(room);
+    this.logger.log(`Client ${client.id} joined room ${room}`);
+  }
 
   broadcastUpdate(order: OrderEntity) {
     // TODO: replace mock user room with real auth/rooms

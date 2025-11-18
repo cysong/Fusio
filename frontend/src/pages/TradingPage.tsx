@@ -6,6 +6,7 @@ import OrderBook from "@/components/OrderBook";
 import KlineChart from "@/components/KlineChart";
 import { useOrderBook } from "@/hooks/useOrderBook";
 import { useKlineUpdates } from "@/hooks/useKlineUpdates";
+import { useOrderUpdates } from "@/hooks/useOrderUpdates";
 import { useTradingStore } from "@/stores/tradingStore";
 import { useKlineStore } from "@/stores/klineStore";
 import OrderForm from "@/components/OrderForm";
@@ -38,6 +39,7 @@ export default function TradingPage() {
   // Subscribe to WebSocket updates
   useOrderBook();
   useKlineUpdates();
+  useOrderUpdates();
 
   // Update global trading store when symbol/exchange changes
   useEffect(() => {
