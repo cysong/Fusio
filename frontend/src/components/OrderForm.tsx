@@ -15,8 +15,6 @@ const SIDE_COLOR: Record<"buy" | "sell", string> = {
   sell: "#F6465D",
 };
 
-const QUICK_QTY = [25, 50, 75, 100];
-
 export default function OrderForm() {
   const { selectedExchange, selectedSymbol } = useTradingStore();
   const { submit, creating, error, setError } = useOrderStore();
