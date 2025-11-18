@@ -10,6 +10,8 @@ export const getDatabaseConfig = (): TypeOrmModuleOptions => {
 
   const isSqlite = databaseUrl.startsWith('sqlite');
 
+  const synchronize = process.env.DB_SYNC === 'true' ? true : !isProduction;
+
   // SQLite via URL (e.g., sqlite:data/fusio.db or sqlite://data/fusio.db)
   if (isSqlite) {
     let dbPath = databaseUrl.replace(/^sqlite:/, '');
@@ -23,7 +25,7 @@ export const getDatabaseConfig = (): TypeOrmModuleOptions => {
       type: 'better-sqlite3',
       database: dbPath,
       entities: [__dirname + '/../**/*.entity{.ts,.js}'],
-      synchronize: !isProduction,
+      synchronize,
       logging: !isProduction,
     } as TypeOrmModuleOptions;
   }
@@ -35,11 +37,11 @@ export const getDatabaseConfig = (): TypeOrmModuleOptions => {
     ssl:
       process.env.DB_SSL === 'false'
         ? false
-        : {
-            rejectUnauthorized: false,
-          },
+          : {
+              rejectUnauthorized: false,
+            },
     entities: [__dirname + '/../**/*.entity{.ts,.js}'],
-    synchronize: !isProduction, // 生产环境使用 migrations
+    synchronize, // 可通过 DB_SYNC=true 强制同步
     logging: !isProduction,
   } as TypeOrmModuleOptions;
 };
