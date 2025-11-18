@@ -1,0 +1,40 @@
+app = "fusio"
+primary_region = "syd"
+
+[build]
+  dockerfile = "backend/Dockerfile"
+
+[env]
+  PORT = "3000"
+  NODE_ENV = "production"
+  JWT_EXPIRES_IN = "7d"
+  DB_SSL=true
+
+[[services]]
+  protocol = "tcp"
+  internal_port = 3000
+  processes = ["app"]
+  autostart = true
+  autostop = false
+  min_machines_running = 1
+
+  [services.concurrency]
+    type = "connections"
+    hard_limit = 250
+    soft_limit = 200
+
+  [[services.ports]]
+    handlers = ["http"]
+    port = 80
+
+  [[services.ports]]
+    handlers = ["tls", "http"]
+    port = 443
+
+  [[services.http_checks]]
+    path = "/health"
+    interval = "15s"
+    timeout = "3s"
+    grace_period = "30s"
+    method = "get"
+    restart_limit = 0
